@@ -14,7 +14,6 @@ import {
   Goal as GoalIcon,
   Home,
   Info,
-  Menu,
   MoreVertical,
   Plus,
   SlidersHorizontal,
@@ -273,9 +272,6 @@ function App() {
       <aside className="sidebar" aria-label="Navigazione principale">
         <div className="sidebar-head">
           <div className="app-mark" aria-hidden="true">FT</div>
-          <button className="menu-button" type="button" aria-label="Menu">
-            <Menu size={20} />
-          </button>
         </div>
         <nav>
           {navItems.slice(0, 6).map(([view, label, Icon]) => (
@@ -580,7 +576,7 @@ function MovementsView({
           </div>
         }
       />
-      <MovementTable movements={movements} onDelete={onDelete} />
+      <MovementTable movements={movements} onDelete={onDelete} onNew={onNew} />
     </section>
   )
 }
@@ -975,15 +971,23 @@ function SectionHeader({
 function MovementTable({
   movements,
   onDelete,
+  onNew,
 }: {
   movements: Movement[]
   onDelete: (id?: string) => void
+  onNew?: () => void
 }) {
   if (movements.length === 0) {
     return (
       <div className="empty-ledger">
         <strong>Nessun movimento registrato</strong>
         <span>Aggiungi il primo introito o una spesa per vedere le stime aggiornarsi.</span>
+        {onNew ? (
+          <button className="text-button empty-action" type="button" onClick={onNew}>
+            <Plus size={15} />
+            Registra movimento
+          </button>
+        ) : null}
       </div>
     )
   }
@@ -1043,6 +1047,15 @@ function MovementTable({
 }
 
 function ReserveRows({ estimate }: { estimate: FiscalEstimate }) {
+  if (estimate.totalReserve <= 0) {
+    return (
+      <div className="empty-ledger compact-empty">
+        <strong>Accantonamenti non ancora calcolabili</strong>
+        <span>Registra un introito nell’anno selezionato per stimare imposta e contributi.</span>
+      </div>
+    )
+  }
+
   const rows = [
     ['Imposta sostitutiva', estimate.substituteTaxDue, estimate.substituteTaxDue * 1.65],
     ['Contributo soggettivo', estimate.pensionDue, estimate.pensionDue * 1.65],

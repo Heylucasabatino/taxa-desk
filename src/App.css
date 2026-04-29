@@ -21,9 +21,9 @@
 }
 
 .sidebar-head {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: space-between;
+  justify-content: start;
   padding: 16px 16px 0 18px;
 }
 
@@ -41,7 +41,6 @@
   letter-spacing: 0;
 }
 
-.menu-button,
 .theme-button,
 .ghost-button,
 .row-action {
@@ -54,10 +53,6 @@
   color: var(--text);
   background: transparent;
   cursor: pointer;
-}
-
-.menu-button {
-  margin: 0;
 }
 
 .sidebar nav,
@@ -73,7 +68,7 @@
   padding: 22px 0 0;
 }
 
-.sidebar button:not(.menu-button):not(.info-link) {
+.sidebar button:not(.info-link) {
   min-height: 44px;
   width: 100%;
   display: flex;
@@ -101,7 +96,7 @@
   font-weight: 660;
 }
 
-.sidebar button:not(.menu-button):not(.info-link):hover,
+.sidebar button:not(.info-link):hover,
 .info-link:hover {
   color: var(--text);
   background: rgba(255, 255, 255, 0.78);
@@ -324,7 +319,7 @@
 
 .ledger-section {
   border: 1px solid rgba(43, 51, 45, 0.08);
-  border-radius: 22px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow-soft);
   padding: 24px 26px 20px;
@@ -423,8 +418,7 @@ tbody tr:hover {
 
 .row-action:hover,
 .ghost-button:hover,
-.theme-button:hover,
-.menu-button:hover {
+.theme-button:hover {
   background: var(--surface-muted);
 }
 
@@ -555,7 +549,7 @@ tbody tr:hover {
   width: 352px;
   flex: 0 0 352px;
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
   padding: 22px;
@@ -659,7 +653,7 @@ textarea:focus {
   display: grid;
   gap: 6px;
   border: 1px dashed rgba(43, 51, 45, 0.16);
-  border-radius: 18px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.38);
   padding: 22px;
 }
@@ -670,6 +664,16 @@ textarea:focus {
 
 .empty-ledger span {
   color: var(--muted);
+}
+
+.empty-action {
+  width: fit-content;
+  margin-top: 6px;
+  padding-inline: 0;
+}
+
+.compact-empty {
+  padding-block: 18px;
 }
 
 .app-footer {
@@ -814,16 +818,16 @@ textarea:focus {
     padding-inline: 0;
   }
 
-  .sidebar button:not(.menu-button):not(.info-link) {
+  .sidebar button:not(.info-link) {
     justify-content: center;
     padding: 0;
   }
 
-  .sidebar button:not(.menu-button):not(.info-link):not(.active) {
+  .sidebar button:not(.info-link):not(.active) {
     color: var(--muted);
   }
 
-  .sidebar button:not(.menu-button):not(.info-link),
+  .sidebar button:not(.info-link),
   .info-link {
     font-size: 0;
   }
@@ -865,10 +869,6 @@ textarea:focus {
   .sidebar-head {
     width: 100%;
     padding: 0 10px;
-  }
-
-  .menu-button {
-    margin: 0;
   }
 
   .sidebar nav,
