@@ -554,34 +554,30 @@ function SetupView({
 
         <form className="setup-form" onSubmit={submitSetup}>
           <div className="setup-grid">
-            <NumberSetting
+            <PercentSetting
               label="Coefficiente redditività"
               value={setupProfile.taxableCoefficient}
-              onChange={(value) =>
-                updateField('taxableCoefficient', Number(value))
-              }
+              onChange={(value) => updateField('taxableCoefficient', value)}
             />
-            <NumberSetting
+            <PercentSetting
               label="Aliquota imposta sostitutiva"
               value={setupProfile.substituteTaxRate}
-              onChange={(value) =>
-                updateField('substituteTaxRate', Number(value))
-              }
+              onChange={(value) => updateField('substituteTaxRate', value)}
             />
-            <NumberSetting
+            <PercentSetting
               label="Contributo soggettivo"
               value={setupProfile.pensionRate}
-              onChange={(value) => updateField('pensionRate', Number(value))}
+              onChange={(value) => updateField('pensionRate', value)}
             />
             <CurrencyField
               label="Minimo soggettivo"
               value={setupProfile.pensionMinimum}
               onChange={(value) => updateField('pensionMinimum', value)}
             />
-            <NumberSetting
+            <PercentSetting
               label="Contributo integrativo"
               value={setupProfile.integrativeRate}
-              onChange={(value) => updateField('integrativeRate', Number(value))}
+              onChange={(value) => updateField('integrativeRate', value)}
             />
             <CurrencyField
               label="Minimo integrativo"
@@ -848,30 +844,30 @@ function ProfileView({
         detail="Parametri usati per le stime operative"
       />
       <div className="profile-grid large">
-        <NumberSetting
+        <PercentSetting
           label="Coefficiente redditività"
           value={profile.taxableCoefficient}
-          onChange={(value) => onChange('taxableCoefficient', value)}
+          onChange={(value) => onChange('taxableCoefficient', String(value))}
         />
-        <NumberSetting
+        <PercentSetting
           label="Aliquota imposta sostitutiva"
           value={profile.substituteTaxRate}
-          onChange={(value) => onChange('substituteTaxRate', value)}
+          onChange={(value) => onChange('substituteTaxRate', String(value))}
         />
-        <NumberSetting
+        <PercentSetting
           label="Contributo soggettivo"
           value={profile.pensionRate}
-          onChange={(value) => onChange('pensionRate', value)}
+          onChange={(value) => onChange('pensionRate', String(value))}
         />
         <CurrencyField
           label="Minimo soggettivo"
           value={profile.pensionMinimum}
           onChange={(value) => onChange('pensionMinimum', String(value))}
         />
-        <NumberSetting
+        <PercentSetting
           label="Contributo integrativo"
           value={profile.integrativeRate}
-          onChange={(value) => onChange('integrativeRate', value)}
+          onChange={(value) => onChange('integrativeRate', String(value))}
         />
         <CurrencyField
           label="Minimo integrativo"
@@ -1414,6 +1410,31 @@ function CurrencyInput({
   )
 }
 
+function PercentSetting({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <Field label={label}>
+      <NumericFormat
+        value={Number.isFinite(value) ? value * 100 : ''}
+        decimalScale={2}
+        decimalSeparator=","
+        thousandSeparator="."
+        fixedDecimalScale={false}
+        suffix="%"
+        allowNegative={false}
+        onValueChange={(values) => onChange((values.floatValue ?? 0) / 100)}
+      />
+    </Field>
+  )
+}
+
 function BarPanel({
   title,
   rows,
@@ -1465,29 +1486,6 @@ function Field({
     <label className="field">
       <span>{label}</span>
       {children}
-    </label>
-  )
-}
-
-function NumberSetting({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
     </label>
   )
 }
