@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { NumericFormat } from 'react-number-format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -113,8 +113,14 @@ function App() {
     targetDate: today,
   })
 
+  const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    ensureMovementMigration().catch(console.error).finally(() => setIsReady(true))
+  }, [])
+
   const appData = useLiveQuery(async () => {
-    await ensureMovementMigration()
+    if (!isReady) return null
 
     const [movements, goals, profile] = await Promise.all([
       db.movements.orderBy('date').reverse().toArray(),
@@ -127,7 +133,7 @@ function App() {
       goals,
       profile: profile ?? { ...defaultTaxProfile, id: 'default' },
     }
-  }, [])
+  }, [isReady])
 
   const movements = appData?.movements ?? emptyMovements
   const goals = appData?.goals ?? emptyGoals
@@ -265,9 +271,12 @@ function App() {
   return (
     <main className="ledger-app">
       <aside className="sidebar" aria-label="Navigazione principale">
-        <button className="menu-button" type="button" aria-label="Menu">
-          <Menu size={20} />
-        </button>
+        <div className="sidebar-head">
+          <div className="app-mark" aria-hidden="true">FT</div>
+          <button className="menu-button" type="button" aria-label="Menu">
+            <Menu size={20} />
+          </button>
+        </div>
         <nav>
           {navItems.slice(0, 6).map(([view, label, Icon]) => (
             <button
@@ -973,7 +982,8 @@ function MovementTable({
   if (movements.length === 0) {
     return (
       <div className="empty-ledger">
-        Nessun movimento per l’anno selezionato.
+        <strong>Nessun movimento registrato</strong>
+        <span>Aggiungi il primo introito o una spesa per vedere le stime aggiornarsi.</span>
       </div>
     )
   }
@@ -1069,7 +1079,12 @@ function GoalRows({
   profile: TaxProfile
 }) {
   if (goals.length === 0) {
-    return <div className="empty-ledger">Nessun obiettivo inserito.</div>
+    return (
+      <div className="empty-ledger">
+        <strong>Nessun obiettivo attivo</strong>
+        <span>Definisci importo e scadenza per calcolare la rata mensile.</span>
+      </div>
+    )
   }
 
   return (
