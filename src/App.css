@@ -381,6 +381,67 @@
   font-weight: 650;
 }
 
+.info-tooltip {
+  width: 18px;
+  height: 18px;
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--muted);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.info-tooltip:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 30;
+  width: min(280px, 72vw);
+  transform: translateX(-50%) translateY(4px);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  color: #fff;
+  background: var(--text);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 520;
+  line-height: 1.4;
+  padding: 10px 12px;
+  text-transform: none;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms ease;
+}
+
+.tooltip-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -5px) rotate(45deg);
+  background: var(--text);
+}
+
+.info-tooltip:hover .tooltip-bubble,
+.info-tooltip:focus .tooltip-bubble,
+.info-tooltip:focus-within .tooltip-bubble {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .summary-item strong {
   color: var(--text);
   font-size: 31px;
@@ -406,6 +467,12 @@
 .app-footer,
 .empty-ledger {
   color: var(--muted);
+}
+
+.summary-item .tooltip-bubble,
+.section-header .tooltip-bubble,
+.field .tooltip-bubble {
+  color: #fff;
 }
 
 .content-shell {
@@ -444,6 +511,12 @@
   display: flex;
   align-items: baseline;
   gap: 14px;
+}
+
+.section-title-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .section-header h2,
@@ -703,6 +776,13 @@ tbody tr:hover {
 .field {
   display: grid;
   gap: 7px;
+}
+
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
 }
 
 input,
@@ -1091,6 +1171,21 @@ textarea:focus {
   .app-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .tooltip-bubble {
+    left: 0;
+    transform: translateY(4px);
+  }
+
+  .tooltip-bubble::after {
+    left: 14px;
+  }
+
+  .info-tooltip:hover .tooltip-bubble,
+  .info-tooltip:focus .tooltip-bubble,
+  .info-tooltip:focus-within .tooltip-bubble {
+    transform: translateY(0);
   }
 
   .section-actions {

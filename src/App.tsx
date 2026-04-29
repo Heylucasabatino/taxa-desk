@@ -90,6 +90,39 @@ const expenseStatuses: Array<[MovementStatus, string]> = [
   ['to_pay', 'Da pagare'],
 ]
 
+const helpText = {
+  available:
+    'Stima di quanto resta dopo spese registrate e accantonamenti fiscali/previdenziali. Se e negativo, i minimi configurati superano gli incassi registrati.',
+  reserve:
+    'Somma prudenziale da non considerare spendibile perche destinata a imposte e contributi stimati.',
+  grossIncome:
+    'Totale degli introiti registrati nell’anno selezionato. Le spese non lo riducono nel regime forfettario.',
+  expenses:
+    'Spese macroscopiche registrate per capire il margine operativo. Nel forfettario non vengono dedotte analiticamente dal calcolo fiscale.',
+  margin:
+    'Differenza tra introiti e spese registrate, prima di considerare gli accantonamenti fiscali e previdenziali.',
+  taxableCoefficient:
+    'Percentuale del fatturato considerata reddito imponibile nel forfettario. Per psicologi e impostata a 78%.',
+  substituteTax:
+    'Percentuale applicata al reddito imponibile netto. Puo essere 5% nei primi anni se hai i requisiti, altrimenti 15%.',
+  pensionRate:
+    'Contributo previdenziale soggettivo calcolato sul reddito professionale forfettario.',
+  pensionMinimum:
+    'Importo minimo annuo dovuto anche quando il calcolo percentuale risulta piu basso.',
+  integrativeRate:
+    'Contributo integrativo calcolato sul fatturato lordo. Di solito viene esposto in fattura come rivalsa.',
+  integrativeMinimum:
+    'Importo minimo annuo del contributo integrativo, confrontato con il calcolo percentuale.',
+  movementAmount:
+    'Importo lordo del movimento. Per gli introiti usa quanto incassato o da incassare; per le spese usa il costo sostenuto.',
+  movementStatus:
+    'Serve a distinguere cio che e gia incassato/pagato da cio che e ancora previsto o da saldare.',
+  reserves:
+    'Mostra cosa congelare secondo il profilo fiscale configurato. I minimi previdenziali possono rendere alta la stima a inizio anno.',
+  goals:
+    'Trasforma una spesa futura in rata mensile netta e lordo indicativo da fatturare.',
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ActiveView>('overview')
   const [selectedYear, setSelectedYear] = useState(currentYear)
@@ -486,28 +519,33 @@ function SummaryStrip({
         value={formatCurrency(estimate.availableAfterReserve)}
         detail="Dopo spese e accantonamenti"
         tone="positive"
+        help={helpText.available}
       />
       <SummaryItem
         label="Da accantonare"
         value={formatCurrency(estimate.totalReserve)}
         detail={`${formatPercent(estimate.effectiveReserveRate)} degli introiti`}
         tone="warning"
+        help={helpText.reserve}
       />
       <SummaryItem
         label="Introiti"
         value={formatCurrency(estimate.grossIncome)}
         detail="Totale lordo"
+        help={helpText.grossIncome}
       />
       <SummaryItem
         label="Spese"
         value={formatCurrency(expenseTotal)}
         detail="Totale macroscopiche"
+        help={helpText.expenses}
       />
       <SummaryItem
         label="Margine operativo"
         value={formatCurrency(operationalMargin)}
         detail="Introiti - Spese"
         tone="positive"
+        help={helpText.margin}
       />
     </section>
   )
@@ -557,31 +595,37 @@ function SetupView({
             <PercentSetting
               label="Coefficiente redditività"
               value={setupProfile.taxableCoefficient}
+              help={helpText.taxableCoefficient}
               onChange={(value) => updateField('taxableCoefficient', value)}
             />
             <PercentSetting
               label="Aliquota imposta sostitutiva"
               value={setupProfile.substituteTaxRate}
+              help={helpText.substituteTax}
               onChange={(value) => updateField('substituteTaxRate', value)}
             />
             <PercentSetting
               label="Contributo soggettivo"
               value={setupProfile.pensionRate}
+              help={helpText.pensionRate}
               onChange={(value) => updateField('pensionRate', value)}
             />
             <CurrencyField
               label="Minimo soggettivo"
               value={setupProfile.pensionMinimum}
+              help={helpText.pensionMinimum}
               onChange={(value) => updateField('pensionMinimum', value)}
             />
             <PercentSetting
               label="Contributo integrativo"
               value={setupProfile.integrativeRate}
+              help={helpText.integrativeRate}
               onChange={(value) => updateField('integrativeRate', value)}
             />
             <CurrencyField
               label="Minimo integrativo"
               value={setupProfile.integrativeMinimum}
+              help={helpText.integrativeMinimum}
               onChange={(value) => updateField('integrativeMinimum', value)}
             />
           </div>
@@ -744,6 +788,7 @@ function ReservesView({
       <SectionHeader
         title="Accantonamenti"
         detail={compact ? 'Stima immediata' : 'Stima aggiornata in tempo reale'}
+        help={helpText.reserves}
       />
       <ReserveRows estimate={estimate} />
       {estimate.grossIncome > 0 && estimate.totalReserve > estimate.grossIncome ? (
@@ -782,6 +827,7 @@ function GoalsView({
       <SectionHeader
         title="Obiettivi"
         detail={compact ? 'Prossimi traguardi' : 'Risparmio e lordo necessario'}
+        help={helpText.goals}
       />
       <GoalRows goals={goals} profile={profile} />
       <GoalForm
@@ -847,31 +893,37 @@ function ProfileView({
         <PercentSetting
           label="Coefficiente redditività"
           value={profile.taxableCoefficient}
+          help={helpText.taxableCoefficient}
           onChange={(value) => onChange('taxableCoefficient', String(value))}
         />
         <PercentSetting
           label="Aliquota imposta sostitutiva"
           value={profile.substituteTaxRate}
+          help={helpText.substituteTax}
           onChange={(value) => onChange('substituteTaxRate', String(value))}
         />
         <PercentSetting
           label="Contributo soggettivo"
           value={profile.pensionRate}
+          help={helpText.pensionRate}
           onChange={(value) => onChange('pensionRate', String(value))}
         />
         <CurrencyField
           label="Minimo soggettivo"
           value={profile.pensionMinimum}
+          help={helpText.pensionMinimum}
           onChange={(value) => onChange('pensionMinimum', String(value))}
         />
         <PercentSetting
           label="Contributo integrativo"
           value={profile.integrativeRate}
+          help={helpText.integrativeRate}
           onChange={(value) => onChange('integrativeRate', String(value))}
         />
         <CurrencyField
           label="Minimo integrativo"
           value={profile.integrativeMinimum}
+          help={helpText.integrativeMinimum}
           onChange={(value) => onChange('integrativeMinimum', String(value))}
         />
       </div>
@@ -1032,12 +1084,13 @@ function MovementDrawer({
         <CurrencyField
           label="Importo"
           value={movementForm.amount}
+          help={helpText.movementAmount}
           onChange={(value) =>
             setMovementForm({ ...movementForm, amount: String(value) })
           }
           required
         />
-        <Field label="Stato">
+        <Field label="Stato" help={helpText.movementStatus}>
           <select
             value={movementForm.status}
             onChange={(event) =>
@@ -1099,17 +1152,19 @@ function SummaryItem({
   value,
   detail,
   tone,
+  help,
 }: {
   label: string
   value: string
   detail: string
   tone?: 'positive' | 'warning'
+  help?: string
 }) {
   return (
     <article className="summary-item">
       <div>
         <span>{label}</span>
-        <Info size={14} />
+        {help ? <InfoTooltip text={help} /> : null}
       </div>
       <strong className={tone}>{value}</strong>
       <small>{detail}</small>
@@ -1117,19 +1172,40 @@ function SummaryItem({
   )
 }
 
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span
+      className="info-tooltip"
+      tabIndex={0}
+      role="button"
+      aria-label={text}
+    >
+      <Info size={14} aria-hidden="true" />
+      <span className="tooltip-bubble" role="tooltip">
+        {text}
+      </span>
+    </span>
+  )
+}
+
 function SectionHeader({
   title,
   detail,
   action,
+  help,
 }: {
   title: string
   detail: string
   action?: React.ReactNode
+  help?: string
 }) {
   return (
     <div className="section-header">
       <div>
-        <h2>{title}</h2>
+        <div className="section-title-line">
+          <h2>{title}</h2>
+          {help ? <InfoTooltip text={help} /> : null}
+        </div>
         <span>{detail}</span>
       </div>
       {action}
@@ -1368,14 +1444,16 @@ function CurrencyField({
   value,
   onChange,
   required = false,
+  help,
 }: {
   label: string
   value: number | string
   onChange: (value: number) => void
   required?: boolean
+  help?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} help={help}>
       <CurrencyInput value={value} onChange={onChange} required={required} />
     </Field>
   )
@@ -1414,13 +1492,15 @@ function PercentSetting({
   label,
   value,
   onChange,
+  help,
 }: {
   label: string
   value: number
   onChange: (value: number) => void
+  help?: string
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} help={help}>
       <NumericFormat
         value={Number.isFinite(value) ? value * 100 : ''}
         decimalScale={2}
@@ -1478,13 +1558,18 @@ function DeadlineRow({ date, title }: { date: string; title: string }) {
 function Field({
   label,
   children,
+  help,
 }: {
   label: string
   children: React.ReactNode
+  help?: string
 }) {
   return (
     <label className="field">
-      <span>{label}</span>
+      <span className="field-label">
+        <span>{label}</span>
+        {help ? <InfoTooltip text={help} /> : null}
+      </span>
       {children}
     </label>
   )
