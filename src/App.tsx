@@ -1,60 +1,99 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import {
+  ArrowDown,
   ArrowDownToLine,
-  CalendarClock,
-  CircleDollarSign,
+  ArrowUp,
+  ArrowUpFromLine,
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Database,
+  Filter,
   Goal as GoalIcon,
-  PiggyBank,
+  Home,
+  Info,
+  Menu,
+  MoreVertical,
   Plus,
-  Settings2,
-  ShieldCheck,
+  SlidersHorizontal,
+  Sun,
+  Target,
   Trash2,
-  Wallet,
+  WalletCards,
+  X,
 } from 'lucide-react'
 import './App.css'
 import {
-  addExpense,
   addGoal,
-  addIncome,
+  addMovement,
+  db,
   deleteRecord,
+  ensureMovementMigration,
   exportBackup,
-  loadAll,
+  importBackup,
   saveProfile,
 } from './lib/db'
 import {
+  defaultTaxProfile,
   estimateFiscalPosition,
   estimateGoalPlan,
+  filterMovementsByYear,
   formatCurrency,
   formatPercent,
-  type Expense,
+  getAvailableYears,
   type Goal,
-  type Income,
+  type Movement,
+  type MovementStatus,
+  type MovementType,
   type TaxProfile,
 } from './lib/finance'
 
-type AppData = {
-  incomes: Income[]
-  expenses: Expense[]
-  goals: Goal[]
-  profile: TaxProfile
+type Toast = {
+  id: number
+  message: string
 }
 
 const today = new Date().toISOString().slice(0, 10)
+const currentYear = new Date().getFullYear()
+const emptyMovements: Movement[] = []
+const emptyGoals: Goal[] = []
+
+const navItems = [
+  ['Panoramica', Home],
+  ['Movimenti', ArrowUpFromLine],
+  ['Accantonamenti', WalletCards],
+  ['Obiettivi', Target],
+  ['Scadenze', CalendarDays],
+  ['Analisi', BarChart3],
+  ['Profilo fiscale', SlidersHorizontal],
+  ['Dati & backup', Database],
+] as const
+
+const incomeStatuses: Array<[MovementStatus, string]> = [
+  ['collected', 'Incassato'],
+  ['pending', 'Da incassare'],
+]
+
+const expenseStatuses: Array<[MovementStatus, string]> = [
+  ['paid', 'Pagata'],
+  ['to_pay', 'Da pagare'],
+]
 
 function App() {
-  const [data, setData] = useState<AppData | null>(null)
-  const [incomeForm, setIncomeForm] = useState({
+  const [selectedYear, setSelectedYear] = useState(currentYear)
+  const [drawerOpen, setDrawerOpen] = useState(true)
+  const [movementType, setMovementType] = useState<MovementType>('income')
+  const [toast, setToast] = useState<Toast | null>(null)
+  const backupInputRef = useRef<HTMLInputElement>(null)
+  const [movementForm, setMovementForm] = useState({
     date: today,
     description: '',
-    amount: '',
     category: 'Sedute',
-  })
-  const [expenseForm, setExpenseForm] = useState({
-    date: today,
-    description: '',
     amount: '',
-    category: 'Spesa fissa',
+    status: 'collected' as MovementStatus,
+    notes: '',
   })
   const [goalForm, setGoalForm] = useState({
     name: '',
@@ -63,56 +102,79 @@ function App() {
     targetDate: today,
   })
 
-  async function refresh() {
-    setData(await loadAll())
-  }
+  const appData = useLiveQuery(async () => {
+    await ensureMovementMigration()
 
-  useEffect(() => {
-    let isMounted = true
+    const [movements, goals, profile] = await Promise.all([
+      db.movements.orderBy('date').reverse().toArray(),
+      db.goals.orderBy('targetDate').toArray(),
+      db.settings.get('default'),
+    ])
 
-    loadAll().then((loadedData) => {
-      if (isMounted) {
-        setData(loadedData)
-      }
-    })
-
-    return () => {
-      isMounted = false
+    return {
+      movements,
+      goals,
+      profile: profile ?? { ...defaultTaxProfile, id: 'default' },
     }
   }, [])
 
-  const fiscalEstimate = useMemo(() => {
-    if (!data) {
-      return null
-    }
+  const movements = appData?.movements ?? emptyMovements
+  const goals = appData?.goals ?? emptyGoals
+  const profile = appData?.profile ?? defaultTaxProfile
+  const availableYears = useMemo(
+    () => getAvailableYears(movements, currentYear),
+    [movements],
+  )
+  const annualMovements = useMemo(
+    () => filterMovementsByYear(movements, selectedYear),
+    [movements, selectedYear],
+  )
+  const fiscalEstimate = useMemo(
+    () => estimateFiscalPosition(annualMovements, profile),
+    [annualMovements, profile],
+  )
+  const expenseTotal = fiscalEstimate.expenses
+  const operationalMargin = fiscalEstimate.grossIncome - expenseTotal
+  function notify(message: string) {
+    const id = Date.now()
 
-    return estimateFiscalPosition(data.incomes, data.expenses, data.profile)
-  }, [data])
-
-  async function submitIncome(event: FormEvent) {
-    event.preventDefault()
-
-    await addIncome({
-      date: incomeForm.date,
-      description: incomeForm.description || 'Introito',
-      amount: Number(incomeForm.amount),
-      category: incomeForm.category || 'Altro',
-    })
-    setIncomeForm({ ...incomeForm, description: '', amount: '' })
-    await refresh()
+    setToast({ id, message })
+    window.setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current))
+    }, 2800)
   }
 
-  async function submitExpense(event: FormEvent) {
+  function setType(type: MovementType) {
+    setMovementType(type)
+    setMovementForm((form) => ({
+      ...form,
+      category: type === 'income' ? 'Sedute' : 'Spesa fissa',
+      status: type === 'income' ? 'collected' : 'paid',
+    }))
+  }
+
+  async function submitMovement(event: FormEvent) {
     event.preventDefault()
 
-    await addExpense({
-      date: expenseForm.date,
-      description: expenseForm.description || 'Spesa',
-      amount: Number(expenseForm.amount),
-      category: expenseForm.category || 'Altro',
+    await addMovement({
+      date: movementForm.date,
+      type: movementType,
+      description:
+        movementForm.description ||
+        (movementType === 'income' ? 'Introito' : 'Spesa'),
+      category: movementForm.category || 'Altro',
+      amount: Number(movementForm.amount),
+      status: movementForm.status,
+      notes: movementForm.notes,
     })
-    setExpenseForm({ ...expenseForm, description: '', amount: '' })
-    await refresh()
+
+    setMovementForm({
+      ...movementForm,
+      description: '',
+      amount: '',
+      notes: '',
+    })
+    notify('Movimento salvato.')
   }
 
   async function submitGoal(event: FormEvent) {
@@ -125,420 +187,678 @@ function App() {
       targetDate: goalForm.targetDate,
     })
     setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
-    await refresh()
+    notify('Obiettivo creato.')
   }
 
   async function updateProfile(field: keyof TaxProfile, value: string) {
-    if (!data) {
-      return
-    }
-
-    const nextProfile = {
-      ...data.profile,
+    await saveProfile({
+      ...profile,
       [field]: Number(value),
-    }
-
-    setData({ ...data, profile: nextProfile })
-    await saveProfile(nextProfile)
+    })
   }
 
-  async function remove(table: 'incomes' | 'expenses' | 'goals', id?: string) {
+  async function removeMovement(id?: string) {
     if (!id) {
       return
     }
 
-    await deleteRecord(table, id)
-    await refresh()
+    await deleteRecord('movements', id)
+    notify('Movimento eliminato.')
   }
 
-  if (!data || !fiscalEstimate) {
-    return <main className="app-shell loading">Caricamento dati locali...</main>
+  async function handleExport() {
+    await exportBackup()
+    notify('Backup esportato.')
   }
 
-  const nextGoal = data.goals[0]
-  const nextGoalPlan = nextGoal
-    ? estimateGoalPlan(nextGoal, data.profile)
-    : null
+  async function handleImport(file?: File) {
+    if (!file) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      'Importare questo backup? I movimenti e gli obiettivi locali verranno sostituiti.',
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      await importBackup(JSON.parse(await file.text()))
+      notify('Backup importato.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Import non riuscito.')
+    } finally {
+      if (backupInputRef.current) {
+        backupInputRef.current.value = ''
+      }
+    }
+  }
+
+  if (!appData) {
+    return <main className="loading">Caricamento dati locali...</main>
+  }
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">WebApp locale</p>
-          <h1>Fondi e tasse</h1>
-        </div>
-        <button className="icon-button" type="button" onClick={exportBackup}>
-          <ArrowDownToLine size={18} />
-          Backup JSON
+    <main className="ledger-app">
+      <aside className="sidebar" aria-label="Navigazione principale">
+        <button className="menu-button" type="button" aria-label="Menu">
+          <Menu size={20} />
         </button>
-      </header>
-
-      <section className="summary-grid" aria-label="Sintesi fondi">
-        <MetricCard
-          icon={<Wallet size={20} />}
-          label="Introiti registrati"
-          value={formatCurrency(fiscalEstimate.grossIncome)}
-        />
-        <MetricCard
-          icon={<ShieldCheck size={20} />}
-          label="Da congelare"
-          value={formatCurrency(fiscalEstimate.totalReserve)}
-          detail={`${formatPercent(fiscalEstimate.effectiveReserveRate)} degli introiti`}
-        />
-        <MetricCard
-          icon={<CircleDollarSign size={20} />}
-          label="Disponibile stimato"
-          value={formatCurrency(fiscalEstimate.availableAfterReserve)}
-          detail="Dopo spese e accantonamenti"
-        />
-        <MetricCard
-          icon={<PiggyBank size={20} />}
-          label="Spese macroscopiche"
-          value={formatCurrency(fiscalEstimate.expenses)}
-        />
-      </section>
-
-      <section className="content-grid">
-        <div className="dashboard-column main-column">
-          <div className="panel">
-          <PanelHeader
-            icon={<Plus size={18} />}
-            title="Movimenti"
-            description="Inserisci introiti e spese importanti. Le cifre restano stime prudenziali."
-          />
-          <div className="forms-grid">
-            <form onSubmit={submitIncome}>
-              <h3>Nuovo introito</h3>
-              <Field label="Data">
-                <input
-                  type="date"
-                  value={incomeForm.date}
-                  onChange={(event) =>
-                    setIncomeForm({ ...incomeForm, date: event.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Descrizione">
-                <input
-                  value={incomeForm.description}
-                  placeholder="Seduta, consulenza, altro"
-                  onChange={(event) =>
-                    setIncomeForm({
-                      ...incomeForm,
-                      description: event.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Categoria">
-                <input
-                  value={incomeForm.category}
-                  onChange={(event) =>
-                    setIncomeForm({ ...incomeForm, category: event.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Importo">
-                <input
-                  required
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={incomeForm.amount}
-                  onChange={(event) =>
-                    setIncomeForm({ ...incomeForm, amount: event.target.value })
-                  }
-                />
-              </Field>
-              <button type="submit">
-                <Plus size={16} />
-                Aggiungi introito
-              </button>
-            </form>
-
-            <form onSubmit={submitExpense}>
-              <h3>Nuova spesa</h3>
-              <Field label="Data">
-                <input
-                  type="date"
-                  value={expenseForm.date}
-                  onChange={(event) =>
-                    setExpenseForm({ ...expenseForm, date: event.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Descrizione">
-                <input
-                  value={expenseForm.description}
-                  placeholder="Commercialista, ordine, software"
-                  onChange={(event) =>
-                    setExpenseForm({
-                      ...expenseForm,
-                      description: event.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Categoria">
-                <input
-                  value={expenseForm.category}
-                  onChange={(event) =>
-                    setExpenseForm({
-                      ...expenseForm,
-                      category: event.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Importo">
-                <input
-                  required
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={expenseForm.amount}
-                  onChange={(event) =>
-                    setExpenseForm({ ...expenseForm, amount: event.target.value })
-                  }
-                />
-              </Field>
-              <button type="submit">
-                <Plus size={16} />
-                Aggiungi spesa
-              </button>
-            </form>
-          </div>
+        <nav>
+          {navItems.slice(0, 6).map(([label, Icon], index) => (
+            <a className={index === 0 ? 'active' : ''} href={`#${label}`} key={label}>
+              <Icon size={19} />
+              {label}
+            </a>
+          ))}
+        </nav>
+        <div className="nav-secondary">
+          {navItems.slice(6).map(([label, Icon]) => (
+            <a href={`#${label}`} key={label}>
+              <Icon size={19} />
+              {label}
+            </a>
+          ))}
         </div>
+        <a className="info-link" href="#Informazioni">
+          <Info size={18} />
+          Informazioni
+        </a>
+      </aside>
 
-          <div className="panel">
-            <PanelHeader
-              icon={<CalendarClock size={18} />}
-              title="Accantonamenti"
-              description="Vista sintetica di cosa non considerare spendibile."
-            />
-            <Breakdown
-              rows={[
-                ['Imposta sostitutiva', fiscalEstimate.substituteTaxDue],
-                ['Contributo soggettivo', fiscalEstimate.pensionDue],
-                ['Contributo integrativo', fiscalEstimate.integrativeDue],
-                ['Totale da congelare', fiscalEstimate.totalReserve],
-              ]}
-            />
+      <section className="workspace">
+        <header className="topbar">
+          <div>
+            <h1>Fondi e tasse</h1>
+            <p>
+              Dati locali nel tuo browser <span aria-hidden="true" />
+            </p>
           </div>
-
-          <RecordsPanel
-            title="Ultimi introiti"
-            rows={data.incomes.map((income) => ({
-              id: income.id,
-              date: income.date,
-              label: income.description,
-              meta: income.category,
-              amount: income.amount,
-            }))}
-            onDelete={(id) => remove('incomes', id)}
-          />
-        </div>
-
-        <div className="dashboard-column side-column">
-          <div className="panel">
-          <PanelHeader
-            icon={<Settings2 size={18} />}
-            title="Profilo fiscale"
-            description="Parametri modificabili: niente valori normativi nascosti nel codice."
-          />
-          <div className="settings-grid">
-            <NumberSetting
-              label="Coeff. redditività"
-              value={data.profile.taxableCoefficient}
-              onChange={(value) => updateProfile('taxableCoefficient', value)}
-            />
-            <NumberSetting
-              label="Aliquota imposta"
-              value={data.profile.substituteTaxRate}
-              onChange={(value) => updateProfile('substituteTaxRate', value)}
-            />
-            <NumberSetting
-              label="Contributo soggettivo"
-              value={data.profile.pensionRate}
-              onChange={(value) => updateProfile('pensionRate', value)}
-            />
-            <NumberSetting
-              label="Minimo soggettivo"
-              value={data.profile.pensionMinimum}
-              onChange={(value) => updateProfile('pensionMinimum', value)}
-              step="1"
-            />
-            <NumberSetting
-              label="Integrativo"
-              value={data.profile.integrativeRate}
-              onChange={(value) => updateProfile('integrativeRate', value)}
-            />
-            <NumberSetting
-              label="Minimo integrativo"
-              value={data.profile.integrativeMinimum}
-              onChange={(value) => updateProfile('integrativeMinimum', value)}
-              step="1"
-            />
-          </div>
-        </div>
-
-          <div className="panel">
-          <PanelHeader
-            icon={<GoalIcon size={18} />}
-            title="Obiettivi"
-            description="Calcola il risparmio mensile netto e il lordo indicativo necessario."
-          />
-          <div className="goal-layout">
-            <form onSubmit={submitGoal}>
-              <Field label="Obiettivo">
-                <input
-                  value={goalForm.name}
-                  placeholder="Software, formazione, fondo"
-                  onChange={(event) =>
-                    setGoalForm({ ...goalForm, name: event.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Importo target">
-                <input
-                  required
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={goalForm.targetAmount}
-                  onChange={(event) =>
-                    setGoalForm({
-                      ...goalForm,
-                      targetAmount: event.target.value,
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Già accantonato">
-                <input
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={goalForm.savedAmount}
-                  onChange={(event) =>
-                    setGoalForm({ ...goalForm, savedAmount: event.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Scadenza">
-                <input
-                  type="date"
-                  value={goalForm.targetDate}
-                  onChange={(event) =>
-                    setGoalForm({ ...goalForm, targetDate: event.target.value })
-                  }
-                />
-              </Field>
-              <button type="submit">
-                <Plus size={16} />
-                Crea obiettivo
+          <div className="topbar-actions">
+            <div className="year-stepper">
+              <button
+                type="button"
+                aria-label="Anno precedente"
+                onClick={() => setSelectedYear((year) => year - 1)}
+              >
+                <ChevronLeft size={17} />
               </button>
-            </form>
-
-            <div className="goal-focus">
-              {nextGoal && nextGoalPlan ? (
-                <>
-                  <div
-                    className="progress-ring"
-                    style={{
-                      background: `conic-gradient(#2f8f83 ${nextGoalPlan.progress * 360}deg, #e2e8f0 0deg)`,
-                    }}
-                  >
-                    <span>{formatPercent(nextGoalPlan.progress)}</span>
-                  </div>
-                  <div>
-                    <h3>{nextGoal.name}</h3>
-                    <p>
-                      Servono {formatCurrency(nextGoalPlan.monthlyNet)} netti al
-                      mese, circa {formatCurrency(nextGoalPlan.monthlyGross)} di
-                      lordo aggiuntivo.
-                    </p>
-                    <small>
-                      Mancano {nextGoalPlan.months} mesi e{' '}
-                      {formatCurrency(nextGoalPlan.remaining)}.
-                    </small>
-                  </div>
-                </>
-              ) : (
-                <div className="goal-empty">
-                  <strong>Nessun obiettivo attivo</strong>
-                  <p>
-                    Inserisci importo e scadenza per ottenere rata mensile netta
-                    e lordo indicativo.
-                  </p>
-                  <span>Il calcolo usa il profilo fiscale configurato.</span>
-                </div>
-              )}
+              <select
+                aria-label="Anno fiscale"
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(Number(event.target.value))}
+              >
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                aria-label="Anno successivo"
+                onClick={() => setSelectedYear((year) => year + 1)}
+              >
+                <ChevronRight size={17} />
+              </button>
             </div>
+            <button className="outline-button" type="button">
+              Gen - Dic {selectedYear}
+            </button>
+            <button className="outline-button" type="button">
+              <Filter size={16} />
+              Filtri
+            </button>
+            <button className="outline-button" type="button" onClick={handleExport}>
+              <ArrowDownToLine size={16} />
+              Backup
+            </button>
+            <button
+              className="outline-button"
+              type="button"
+              onClick={() => backupInputRef.current?.click()}
+            >
+              <ArrowUpFromLine size={16} />
+              Importa
+            </button>
+            <button className="theme-button" type="button" aria-label="Tema">
+              <Sun size={19} />
+            </button>
+            <input
+              ref={backupInputRef}
+              hidden
+              type="file"
+              accept="application/json"
+              onChange={(event) => handleImport(event.target.files?.[0])}
+            />
           </div>
+        </header>
+
+        <section className="summary-strip" aria-label="Sintesi fondi">
+          <SummaryItem
+            label="Disponibile"
+            value={formatCurrency(fiscalEstimate.availableAfterReserve)}
+            detail="Dopo spese e accantonamenti"
+            tone="positive"
+          />
+          <SummaryItem
+            label="Da accantonare"
+            value={formatCurrency(fiscalEstimate.totalReserve)}
+            detail={`${formatPercent(fiscalEstimate.effectiveReserveRate)} degli introiti`}
+            tone="warning"
+          />
+          <SummaryItem
+            label="Introiti"
+            value={formatCurrency(fiscalEstimate.grossIncome)}
+            detail="Totale lordo"
+          />
+          <SummaryItem
+            label="Spese"
+            value={formatCurrency(expenseTotal)}
+            detail="Totale macroscopiche"
+          />
+          <SummaryItem
+            label="Margine operativo"
+            value={formatCurrency(operationalMargin)}
+            detail="Introiti - Spese"
+            tone="positive"
+          />
+        </section>
+
+        <div className="content-shell">
+          <section className="main-ledger">
+            <section className="ledger-section" id="Movimenti">
+              <SectionHeader
+                title="Movimenti"
+                detail="Ultimi inseriti"
+                action={
+                  <div className="section-actions">
+                    <button className="text-button" type="button">
+                      <ArrowUpFromLine size={16} />
+                      Importa
+                    </button>
+                    <button className="text-button" type="button" onClick={handleExport}>
+                      <ArrowDownToLine size={16} />
+                      Esporta
+                    </button>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => setDrawerOpen(true)}
+                    >
+                      <Plus size={17} />
+                      Nuovo
+                    </button>
+                  </div>
+                }
+              />
+              <MovementTable movements={annualMovements} onDelete={removeMovement} />
+            </section>
+
+            <section className="ledger-section" id="Accantonamenti">
+              <SectionHeader
+                title="Accantonamenti"
+                detail="Stima aggiornata in tempo reale"
+                action={<button className="text-button" type="button">Dettaglio calcolo</button>}
+              />
+              <ReserveRows estimate={fiscalEstimate} />
+            </section>
+
+            <section className="ledger-section" id="Obiettivi">
+              <SectionHeader
+                title="Obiettivi"
+                detail="Prossimi traguardi"
+                action={<button className="text-button" type="button">+ Nuovo obiettivo</button>}
+              />
+              <GoalRows goals={goals} profile={profile} />
+              <GoalForm
+                goalForm={goalForm}
+                setGoalForm={setGoalForm}
+                onSubmit={submitGoal}
+              />
+            </section>
+          </section>
+
+          {drawerOpen ? (
+            <aside className="drawer" aria-label="Nuovo movimento">
+              <div className="drawer-header">
+                <h2>Nuovo movimento</h2>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  aria-label="Chiudi drawer"
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="segmented-control" role="tablist" aria-label="Tipo movimento">
+                <button
+                  className={movementType === 'income' ? 'selected' : ''}
+                  type="button"
+                  onClick={() => setType('income')}
+                >
+                  Introito
+                </button>
+                <button
+                  className={movementType === 'expense' ? 'selected' : ''}
+                  type="button"
+                  onClick={() => setType('expense')}
+                >
+                  Spesa
+                </button>
+              </div>
+              <form className="drawer-form" onSubmit={submitMovement}>
+                <Field label="Data">
+                  <input
+                    type="date"
+                    value={movementForm.date}
+                    onChange={(event) =>
+                      setMovementForm({ ...movementForm, date: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Descrizione">
+                  <input
+                    value={movementForm.description}
+                    placeholder={
+                      movementType === 'income'
+                        ? 'Es. Seduta psicoterapia'
+                        : 'Es. Commercialista'
+                    }
+                    onChange={(event) =>
+                      setMovementForm({
+                        ...movementForm,
+                        description: event.target.value,
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Categoria">
+                  <select
+                    value={movementForm.category}
+                    onChange={(event) =>
+                      setMovementForm({
+                        ...movementForm,
+                        category: event.target.value,
+                      })
+                    }
+                  >
+                    {(movementType === 'income'
+                      ? ['Sedute', 'Consulenze', 'Valutazioni', 'Altro']
+                      : ['Spesa fissa', 'Servizi professionali', 'Quote e iscrizioni', 'Software', 'Altro']
+                    ).map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Importo (€)">
+                  <input
+                    required
+                    min="0"
+                    step="0.01"
+                    type="number"
+                    value={movementForm.amount}
+                    placeholder="0,00"
+                    onChange={(event) =>
+                      setMovementForm({ ...movementForm, amount: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Stato">
+                  <select
+                    value={movementForm.status}
+                    onChange={(event) =>
+                      setMovementForm({
+                        ...movementForm,
+                        status: event.target.value as MovementStatus,
+                      })
+                    }
+                  >
+                    {(movementType === 'income' ? incomeStatuses : expenseStatuses).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </Field>
+                <Field label="Note (facoltative)">
+                  <textarea
+                    value={movementForm.notes}
+                    placeholder="Aggiungi una nota..."
+                    onChange={(event) =>
+                      setMovementForm({ ...movementForm, notes: event.target.value })
+                    }
+                  />
+                </Field>
+                <div className="drawer-actions">
+                  <button className="primary-button" type="submit">
+                    Salva
+                  </button>
+                  <button
+                    className="outline-button"
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </form>
+
+              <div className="profile-panel" id="Profilo fiscale">
+                <h3>Profilo fiscale</h3>
+                <div className="profile-grid">
+                  <NumberSetting
+                    label="Coeff."
+                    value={profile.taxableCoefficient}
+                    onChange={(value) => updateProfile('taxableCoefficient', value)}
+                  />
+                  <NumberSetting
+                    label="Aliquota"
+                    value={profile.substituteTaxRate}
+                    onChange={(value) => updateProfile('substituteTaxRate', value)}
+                  />
+                  <NumberSetting
+                    label="Soggettivo"
+                    value={profile.pensionRate}
+                    onChange={(value) => updateProfile('pensionRate', value)}
+                  />
+                  <NumberSetting
+                    label="Integrativo"
+                    value={profile.integrativeRate}
+                    onChange={(value) => updateProfile('integrativeRate', value)}
+                  />
+                </div>
+              </div>
+            </aside>
+          ) : null}
         </div>
 
-          <RecordsPanel
-            title="Ultime spese"
-            rows={data.expenses.map((expense) => ({
-              id: expense.id,
-              date: expense.date,
-              label: expense.description,
-              meta: expense.category,
-              amount: expense.amount,
-            }))}
-            onDelete={(id) => remove('expenses', id)}
-          />
-        </div>
+        <footer className="app-footer">
+          <span>
+            Le cifre sono stime operative basate sul profilo fiscale configurato.
+          </span>
+          <span>
+            Profilo: Forfettario {formatPercent(profile.substituteTaxRate)} ·
+            Coeff. {formatPercent(profile.taxableCoefficient)}
+          </span>
+        </footer>
       </section>
 
-      <footer>
-        <Database size={16} />
-        Dati salvati in IndexedDB nel browser locale. Le cifre sono stime
-        operative, non una dichiarazione fiscale.
-      </footer>
+      {toast ? <div className="toast">{toast.message}</div> : null}
     </main>
   )
 }
 
-function MetricCard({
-  icon,
+function SummaryItem({
   label,
   value,
   detail,
+  tone,
 }: {
-  icon: React.ReactNode
   label: string
   value: string
-  detail?: string
+  detail: string
+  tone?: 'positive' | 'warning'
 }) {
   return (
-    <article className="metric-card">
-      <div className="metric-icon">{icon}</div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail ? <small>{detail}</small> : null}
+    <article className="summary-item">
+      <div>
+        <span>{label}</span>
+        <Info size={14} />
+      </div>
+      <strong className={tone}>{value}</strong>
+      <small>{detail}</small>
     </article>
   )
 }
 
-function PanelHeader({
-  icon,
+function SectionHeader({
   title,
-  description,
+  detail,
+  action,
 }: {
-  icon: React.ReactNode
   title: string
-  description: string
+  detail: string
+  action?: React.ReactNode
 }) {
   return (
-    <div className="panel-header">
-      <div className="metric-icon">{icon}</div>
+    <div className="section-header">
       <div>
         <h2>{title}</h2>
-        <p>{description}</p>
+        <span>{detail}</span>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function MovementTable({
+  movements,
+  onDelete,
+}: {
+  movements: Movement[]
+  onDelete: (id?: string) => void
+}) {
+  if (movements.length === 0) {
+    return (
+      <div className="empty-ledger">
+        Nessun movimento per l’anno selezionato.
+      </div>
+    )
+  }
+
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Descrizione</th>
+            <th>Categoria</th>
+            <th>Importo</th>
+            <th>Stato</th>
+            <th aria-label="Azioni" />
+          </tr>
+        </thead>
+        <tbody>
+          {movements.map((movement) => (
+            <tr key={movement.id}>
+              <td>{formatDate(movement.date)}</td>
+              <td>
+                <span className={`type-cell ${movement.type}`}>
+                  {movement.type === 'income' ? (
+                    <ArrowUp size={15} />
+                  ) : (
+                    <ArrowDown size={15} />
+                  )}
+                  {movement.type === 'income' ? 'Introito' : 'Spesa'}
+                </span>
+              </td>
+              <td>{movement.description}</td>
+              <td>{movement.category}</td>
+              <td className={movement.type === 'income' ? 'amount-income' : 'amount-expense'}>
+                {formatCurrency(movement.amount)}
+              </td>
+              <td>
+                <span className="status-chip">{statusLabel(movement.status)}</span>
+              </td>
+              <td>
+                <button
+                  className="row-action"
+                  type="button"
+                  aria-label={`Elimina ${movement.description}`}
+                  onClick={() => onDelete(movement.id)}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ReserveRows({
+  estimate,
+}: {
+  estimate: ReturnType<typeof estimateFiscalPosition>
+}) {
+  const rows = [
+    ['Imposta sostitutiva', estimate.substituteTaxDue, estimate.substituteTaxDue * 1.65],
+    ['Contributo soggettivo', estimate.pensionDue, estimate.pensionDue * 1.65],
+    ['Contributo integrativo', estimate.integrativeDue, estimate.integrativeDue * 2],
+  ] as const
+  const max = Math.max(...rows.map(([, , projected]) => projected), 1)
+
+  return (
+    <div className="reserve-rows">
+      {rows.map(([label, value, projected]) => (
+        <div className="reserve-row" key={label}>
+          <span>{label}</span>
+          <strong>{formatCurrency(value)}</strong>
+          <div className="reserve-track">
+            <i style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
+            <em style={{ width: `${Math.min(100, (projected / max) * 100)}%` }} />
+          </div>
+          <b>{formatCurrency(projected)}</b>
+        </div>
+      ))}
+      <div className="reserve-total">
+        <span>Totale da accantonare</span>
+        <strong>{formatCurrency(estimate.totalReserve)}</strong>
       </div>
     </div>
+  )
+}
+
+function GoalRows({
+  goals,
+  profile,
+}: {
+  goals: Goal[]
+  profile: TaxProfile
+}) {
+  if (goals.length === 0) {
+    return <div className="empty-ledger">Nessun obiettivo inserito.</div>
+  }
+
+  return (
+    <div className="goal-table">
+      {goals.map((goal) => {
+        const plan = estimateGoalPlan(goal, profile)
+
+        return (
+          <article className="goal-row" key={goal.id}>
+            <div className="goal-mark">
+              <GoalIcon size={22} />
+            </div>
+            <div>
+              <strong>{goal.name}</strong>
+              <span>Obiettivo principale</span>
+            </div>
+            <dl>
+              <div>
+                <dt>Target</dt>
+                <dd>{formatCurrency(goal.targetAmount)}</dd>
+              </div>
+              <div>
+                <dt>Accantonato</dt>
+                <dd>{formatCurrency(goal.savedAmount)}</dd>
+              </div>
+              <div>
+                <dt>Manca</dt>
+                <dd className="amount-expense">{formatCurrency(plan.remaining)}</dd>
+              </div>
+              <div>
+                <dt>Scadenza</dt>
+                <dd>{formatDate(goal.targetDate)}</dd>
+              </div>
+              <div>
+                <dt>Rata netta</dt>
+                <dd>{formatCurrency(plan.monthlyNet)} / mese</dd>
+              </div>
+            </dl>
+            <div className="goal-progress">
+              <i style={{ width: `${plan.progress * 100}%` }} />
+            </div>
+            <button className="row-action" type="button" aria-label="Menu obiettivo">
+              <MoreVertical size={16} />
+            </button>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
+function GoalForm({
+  goalForm,
+  setGoalForm,
+  onSubmit,
+}: {
+  goalForm: {
+    name: string
+    targetAmount: string
+    savedAmount: string
+    targetDate: string
+  }
+  setGoalForm: React.Dispatch<
+    React.SetStateAction<{
+      name: string
+      targetAmount: string
+      savedAmount: string
+      targetDate: string
+    }>
+  >
+  onSubmit: (event: FormEvent) => void
+}) {
+  return (
+    <form className="inline-goal-form" onSubmit={onSubmit}>
+      <input
+        value={goalForm.name}
+        placeholder="Nuovo obiettivo"
+        onChange={(event) => setGoalForm({ ...goalForm, name: event.target.value })}
+      />
+      <input
+        required
+        min="0"
+        step="0.01"
+        type="number"
+        value={goalForm.targetAmount}
+        placeholder="Target"
+        onChange={(event) =>
+          setGoalForm({ ...goalForm, targetAmount: event.target.value })
+        }
+      />
+      <input
+        min="0"
+        step="0.01"
+        type="number"
+        value={goalForm.savedAmount}
+        placeholder="Già accantonato"
+        onChange={(event) =>
+          setGoalForm({ ...goalForm, savedAmount: event.target.value })
+        }
+      />
+      <input
+        type="date"
+        value={goalForm.targetDate}
+        onChange={(event) =>
+          setGoalForm({ ...goalForm, targetDate: event.target.value })
+        }
+      />
+      <button className="text-button" type="submit">
+        Salva obiettivo
+      </button>
+    </form>
   )
 }
 
@@ -561,88 +881,36 @@ function NumberSetting({
   label,
   value,
   onChange,
-  step = '0.01',
 }: {
   label: string
   value: number
   onChange: (value: string) => void
-  step?: string
 }) {
   return (
-    <Field label={label}>
+    <label className="field">
+      <span>{label}</span>
       <input
         type="number"
         min="0"
-        step={step}
+        step="0.01"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-    </Field>
+    </label>
   )
 }
 
-function Breakdown({ rows }: { rows: [string, number][] }) {
-  return (
-    <div className="breakdown">
-      {rows.map(([label, value]) => (
-        <div key={label}>
-          <span>{label}</span>
-          <strong>{formatCurrency(value)}</strong>
-        </div>
-      ))}
-    </div>
-  )
+function statusLabel(status: MovementStatus) {
+  return {
+    collected: 'Incassato',
+    pending: 'Da incassare',
+    paid: 'Pagata',
+    to_pay: 'Da pagare',
+  }[status]
 }
 
-function RecordsPanel({
-  className,
-  title,
-  rows,
-  onDelete,
-}: {
-  className?: string
-  title: string
-  rows: Array<{
-    id?: string
-    date: string
-    label: string
-    meta: string
-    amount: number
-  }>
-  onDelete: (id?: string) => void
-}) {
-  return (
-    <div className={`panel ${className ?? ''}`}>
-      <h2>{title}</h2>
-      <div className="record-list">
-        {rows.length > 0 ? (
-          rows.slice(0, 6).map((row) => (
-            <div className="record-row" key={row.id}>
-              <div>
-                <strong>{row.label}</strong>
-                <span>
-                  {row.date} · {row.meta}
-                </span>
-              </div>
-              <div className="record-actions">
-                <b>{formatCurrency(row.amount)}</b>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  aria-label={`Elimina ${row.label}`}
-                  onClick={() => onDelete(row.id)}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="empty-state">Nessun movimento inserito.</p>
-        )}
-      </div>
-    </div>
-  )
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat('it-IT').format(new Date(`${date}T00:00:00`))
 }
 
 export default App

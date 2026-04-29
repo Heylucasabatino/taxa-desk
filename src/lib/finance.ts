@@ -24,6 +24,25 @@ export type Expense = {
   category: string
 }
 
+export type MovementType = 'income' | 'expense'
+
+export type MovementStatus =
+  | 'collected'
+  | 'pending'
+  | 'paid'
+  | 'to_pay'
+
+export type Movement = {
+  id?: string
+  date: string
+  type: MovementType
+  description: string
+  category: string
+  amount: number
+  status: MovementStatus
+  notes?: string
+}
+
 export type Goal = {
   id?: string
   name: string
@@ -59,10 +78,11 @@ export function sumAmounts<T extends { amount: number }>(items: T[]) {
 }
 
 export function estimateFiscalPosition(
-  incomes: Income[],
-  expenses: Expense[],
+  movements: Movement[],
   profile: TaxProfile,
 ): FiscalEstimate {
+  const incomes = movements.filter((movement) => movement.type === 'income')
+  const expenses = movements.filter((movement) => movement.type === 'expense')
   const grossIncome = sumAmounts(incomes)
   const expenseTotal = sumAmounts(expenses)
   const taxableRevenue = grossIncome * profile.taxableCoefficient
@@ -90,6 +110,28 @@ export function estimateFiscalPosition(
     availableAfterReserve,
     effectiveReserveRate: grossIncome > 0 ? totalReserve / grossIncome : 0,
   }
+}
+
+export function filterMovementsByYear(movements: Movement[], year: number) {
+  return movements.filter((movement) => {
+    const movementYear = new Date(`${movement.date}T00:00:00`).getFullYear()
+
+    return movementYear === year
+  })
+}
+
+export function getAvailableYears(movements: Movement[], fallbackYear: number) {
+  const years = new Set<number>([fallbackYear])
+
+  for (const movement of movements) {
+    const movementYear = new Date(`${movement.date}T00:00:00`).getFullYear()
+
+    if (Number.isFinite(movementYear)) {
+      years.add(movementYear)
+    }
+  }
+
+  return [...years].sort((a, b) => b - a)
 }
 
 export function estimateMarginalReserveRate(profile: TaxProfile) {
@@ -138,7 +180,8 @@ export function formatCurrency(value: number) {
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
     currency: 'EUR',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value || 0)
 }
 
