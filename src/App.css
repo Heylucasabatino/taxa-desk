@@ -113,6 +113,50 @@
   justify-content: flex-end;
 }
 
+.overview-page {
+  display: grid;
+  gap: 18px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.overview-card {
+  min-height: 218px;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+  border: 1px solid rgba(43, 51, 45, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+  padding: 24px;
+}
+
+.overview-card h2,
+.overview-card p {
+  margin: 0;
+}
+
+.overview-card p,
+.overview-card span {
+  color: var(--muted);
+}
+
+.overview-card strong {
+  color: var(--accent-dark);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.overview-card .text-button {
+  width: fit-content;
+  padding-inline: 0;
+}
+
 .ledger-app {
   min-height: 100vh;
   display: grid;
@@ -1095,6 +1139,15 @@ textarea:focus {
     align-items: flex-start;
     flex-direction: column;
     padding: 22px 18px;
+  }
+
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card {
+    min-height: 188px;
+    padding: 20px 18px;
   }
 
   .ledger-app {

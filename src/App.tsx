@@ -80,6 +80,24 @@ const navItems: Array<[ActiveView, string, typeof Home]> = [
   ['backup', 'Dati & backup', Database],
 ]
 
+const viewHashes: Record<ActiveView, string> = {
+  overview: 'Panoramica',
+  movements: 'Movimenti',
+  reserves: 'Accantonamenti',
+  goals: 'Obiettivi',
+  deadlines: 'Scadenze',
+  analytics: 'Analisi',
+  profile: 'Profilo fiscale',
+  backup: 'Dati & backup',
+}
+
+const hashViews = Object.fromEntries(
+  Object.entries(viewHashes).map(([view, hash]) => [
+    normalizeHash(hash),
+    view as ActiveView,
+  ]),
+) as Record<string, ActiveView>
+
 const incomeStatuses: Array<[MovementStatus, string]> = [
   ['collected', 'Incassato'],
   ['pending', 'Da incassare'],
@@ -124,7 +142,7 @@ const helpText = {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState<ActiveView>('overview')
+  const [activeView, setActiveView] = useState<ActiveView>(() => getViewFromHash())
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [movementType, setMovementType] = useState<MovementType>('income')
@@ -149,6 +167,20 @@ function App() {
 
   useEffect(() => {
     ensureMovementMigration().catch(console.error).finally(() => setIsReady(true))
+  }, [])
+
+  useEffect(() => {
+    function handleHashChange() {
+      const nextView = getViewFromHash()
+
+      setActiveView(nextView)
+      setDrawerOpen(nextView === 'movements')
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    handleHashChange()
+
+    return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
   const appData = useLiveQuery(async () => {
@@ -196,11 +228,12 @@ function App() {
 
   function selectView(view: ActiveView) {
     setActiveView(view)
-    if (view !== 'movements') {
-      setDrawerOpen(false)
-    }
-    if (view === 'movements') {
-      setDrawerOpen(true)
+    setDrawerOpen(view === 'movements')
+
+    const nextHash = `#${encodeURIComponent(viewHashes[view])}`
+
+    if (window.location.hash !== nextHash) {
+      window.history.pushState(null, '', nextHash)
     }
   }
 
@@ -426,14 +459,11 @@ function App() {
               <OverviewView
                 movements={annualMovements}
                 goals={goals}
-                profile={profile}
                 estimate={fiscalEstimate}
-                onDelete={removeMovement}
                 onGoToMovements={() => selectView('movements')}
+                onGoToReserves={() => selectView('reserves')}
+                onGoToGoals={() => selectView('goals')}
                 onGoToProfile={() => selectView('profile')}
-                goalForm={goalForm}
-                setGoalForm={setGoalForm}
-                onSubmitGoal={submitGoal}
               />
             ) : null}
             {activeView === 'movements' ? (
@@ -651,50 +681,95 @@ function SetupView({
 function OverviewView({
   movements,
   goals,
-  profile,
   estimate,
-  onDelete,
   onGoToMovements,
+  onGoToReserves,
+  onGoToGoals,
   onGoToProfile,
-  goalForm,
-  setGoalForm,
-  onSubmitGoal,
 }: {
   movements: Movement[]
   goals: Goal[]
-  profile: TaxProfile
   estimate: FiscalEstimate
-  onDelete: (id?: string) => void
   onGoToMovements: () => void
+  onGoToReserves: () => void
+  onGoToGoals: () => void
   onGoToProfile: () => void
-  goalForm: GoalFormState
-  setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
-  onSubmitGoal: (event: FormEvent) => void
 }) {
   return (
-    <>
+    <section className="overview-page">
       {movements.length === 0 && goals.length === 0 ? (
         <FirstRunGuide
           onGoToMovements={onGoToMovements}
           onGoToProfile={onGoToProfile}
         />
       ) : null}
-      <MovementsView
-        movements={movements.slice(0, 5)}
-        onDelete={onDelete}
-        onNew={onGoToMovements}
-        compact
-      />
-      <ReservesView estimate={estimate} profile={profile} compact />
-      <GoalsView
-        goals={goals}
-        profile={profile}
-        goalForm={goalForm}
-        setGoalForm={setGoalForm}
-        onSubmitGoal={onSubmitGoal}
-        compact
-      />
-    </>
+
+      <div className="overview-grid">
+        <OverviewCard
+          title="Movimenti"
+          detail="Registra introiti e spese dell’anno selezionato."
+          value={`${movements.length}`}
+          valueLabel={movements.length === 1 ? 'movimento' : 'movimenti'}
+          actionLabel="Apri movimenti"
+          onAction={onGoToMovements}
+        />
+        <OverviewCard
+          title="Accantonamenti"
+          detail="Controlla cosa non considerare spendibile."
+          value={formatCurrency(estimate.totalReserve)}
+          valueLabel="da congelare"
+          actionLabel="Vedi accantonamenti"
+          onAction={onGoToReserves}
+        />
+        <OverviewCard
+          title="Obiettivi"
+          detail="Trasforma una spesa futura in rata mensile."
+          value={`${goals.length}`}
+          valueLabel={goals.length === 1 ? 'obiettivo' : 'obiettivi'}
+          actionLabel="Gestisci obiettivi"
+          onAction={onGoToGoals}
+        />
+        <OverviewCard
+          title="Profilo fiscale"
+          detail="Rivedi aliquote, coefficienti e minimi usati nelle stime."
+          value="Stime"
+          valueLabel="configurabili"
+          actionLabel="Apri profilo"
+          onAction={onGoToProfile}
+        />
+      </div>
+    </section>
+  )
+}
+
+function OverviewCard({
+  title,
+  detail,
+  value,
+  valueLabel,
+  actionLabel,
+  onAction,
+}: {
+  title: string
+  detail: string
+  value: string
+  valueLabel: string
+  actionLabel: string
+  onAction: () => void
+}) {
+  return (
+    <article className="overview-card">
+      <div>
+        <h2>{title}</h2>
+        <p>{detail}</p>
+      </div>
+      <strong>{value}</strong>
+      <span>{valueLabel}</span>
+      <button className="text-button" type="button" onClick={onAction}>
+        {actionLabel}
+        <ChevronRight size={16} />
+      </button>
+    </article>
   )
 }
 
@@ -1638,6 +1713,32 @@ function viewTitle(view: ActiveView) {
     profile: 'Profilo fiscale',
     backup: 'Dati & backup',
   }[view]
+}
+
+function normalizeHash(hash: string) {
+  return hash
+    .replace(/^#/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\+/g, ' ')
+}
+
+function getViewFromHash(): ActiveView {
+  if (typeof window === 'undefined') {
+    return 'overview'
+  }
+
+  const hash = normalizeHash(safeDecodeHash(window.location.hash))
+
+  return hashViews[hash] ?? 'overview'
+}
+
+function safeDecodeHash(hash: string) {
+  try {
+    return decodeURIComponent(hash)
+  } catch {
+    return hash
+  }
 }
 
 function formatDate(date: string) {
