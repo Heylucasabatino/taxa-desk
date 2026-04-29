@@ -201,6 +201,7 @@ function App() {
       amount: '',
       notes: '',
     })
+    setDrawerOpen(false)
     notify('Movimento salvato.')
   }
 
@@ -265,6 +266,18 @@ function App() {
 
   if (!appData) {
     return <main className="loading">Caricamento dati locali...</main>
+  }
+
+  if (!profile.setupCompleted) {
+    return (
+      <SetupView
+        profile={profile}
+        onComplete={async (configuredProfile) => {
+          await saveProfile({ ...configuredProfile, setupCompleted: true })
+          notify('Profilo iniziale configurato.')
+        }}
+      />
+    )
   }
 
   return (
@@ -384,6 +397,7 @@ function App() {
                 estimate={fiscalEstimate}
                 onDelete={removeMovement}
                 onGoToMovements={() => selectView('movements')}
+                onGoToProfile={() => selectView('profile')}
                 goalForm={goalForm}
                 setGoalForm={setGoalForm}
                 onSubmitGoal={submitGoal}
@@ -415,7 +429,13 @@ function App() {
               <AnalyticsView movements={annualMovements} />
             ) : null}
             {activeView === 'profile' ? (
-              <ProfileView profile={profile} onChange={updateProfile} />
+              <ProfileView
+                profile={profile}
+                onChange={updateProfile}
+                onRestartSetup={() =>
+                  saveProfile({ ...profile, setupCompleted: false })
+                }
+              />
             ) : null}
             {activeView === 'backup' ? (
               <BackupView onExport={handleExport} onImport={() => backupInputRef.current?.click()} />
@@ -493,6 +513,101 @@ function SummaryStrip({
   )
 }
 
+function SetupView({
+  profile,
+  onComplete,
+}: {
+  profile: TaxProfile
+  onComplete: (profile: TaxProfile) => Promise<void>
+}) {
+  const [setupProfile, setSetupProfile] = useState<TaxProfile>({
+    ...defaultTaxProfile,
+    ...profile,
+  })
+  const [isSaving, setIsSaving] = useState(false)
+
+  function updateField(field: keyof TaxProfile, value: number) {
+    setSetupProfile((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  async function submitSetup(event: FormEvent) {
+    event.preventDefault()
+    setIsSaving(true)
+    await onComplete(setupProfile)
+  }
+
+  return (
+    <main className="setup-shell">
+      <section className="setup-card">
+        <div className="setup-intro">
+          <div className="app-mark" aria-hidden="true">FT</div>
+          <p>Configurazione iniziale</p>
+          <h1>Prima rendiamo attendibili le stime.</h1>
+          <span>
+            Questi valori restano modificabili nel profilo fiscale. Servono solo
+            a evitare una dashboard vuota con calcoli impliciti.
+          </span>
+        </div>
+
+        <form className="setup-form" onSubmit={submitSetup}>
+          <div className="setup-grid">
+            <NumberSetting
+              label="Coefficiente redditività"
+              value={setupProfile.taxableCoefficient}
+              onChange={(value) =>
+                updateField('taxableCoefficient', Number(value))
+              }
+            />
+            <NumberSetting
+              label="Aliquota imposta sostitutiva"
+              value={setupProfile.substituteTaxRate}
+              onChange={(value) =>
+                updateField('substituteTaxRate', Number(value))
+              }
+            />
+            <NumberSetting
+              label="Contributo soggettivo"
+              value={setupProfile.pensionRate}
+              onChange={(value) => updateField('pensionRate', Number(value))}
+            />
+            <CurrencyField
+              label="Minimo soggettivo"
+              value={setupProfile.pensionMinimum}
+              onChange={(value) => updateField('pensionMinimum', value)}
+            />
+            <NumberSetting
+              label="Contributo integrativo"
+              value={setupProfile.integrativeRate}
+              onChange={(value) => updateField('integrativeRate', Number(value))}
+            />
+            <CurrencyField
+              label="Minimo integrativo"
+              value={setupProfile.integrativeMinimum}
+              onChange={(value) => updateField('integrativeMinimum', value)}
+            />
+          </div>
+
+          <div className="setup-next">
+            <strong>Dopo questo passaggio:</strong>
+            <span>1. registra il primo introito;</span>
+            <span>2. aggiungi eventuali spese macroscopiche;</span>
+            <span>3. crea un obiettivo di risparmio.</span>
+          </div>
+
+          <div className="setup-actions">
+            <button className="primary-button" type="submit" disabled={isSaving}>
+              {isSaving ? 'Salvataggio...' : 'Conferma e inizia'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+  )
+}
+
 function OverviewView({
   movements,
   goals,
@@ -500,6 +615,7 @@ function OverviewView({
   estimate,
   onDelete,
   onGoToMovements,
+  onGoToProfile,
   goalForm,
   setGoalForm,
   onSubmitGoal,
@@ -510,12 +626,19 @@ function OverviewView({
   estimate: FiscalEstimate
   onDelete: (id?: string) => void
   onGoToMovements: () => void
+  onGoToProfile: () => void
   goalForm: GoalFormState
   setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
   onSubmitGoal: (event: FormEvent) => void
 }) {
   return (
     <>
+      {movements.length === 0 && goals.length === 0 ? (
+        <FirstRunGuide
+          onGoToMovements={onGoToMovements}
+          onGoToProfile={onGoToProfile}
+        />
+      ) : null}
       <MovementsView
         movements={movements.slice(0, 5)}
         onDelete={onDelete}
@@ -532,6 +655,36 @@ function OverviewView({
         compact
       />
     </>
+  )
+}
+
+function FirstRunGuide({
+  onGoToMovements,
+  onGoToProfile,
+}: {
+  onGoToMovements: () => void
+  onGoToProfile: () => void
+}) {
+  return (
+    <section className="first-run-panel">
+      <div>
+        <p>Primo utilizzo</p>
+        <h2>Parti da un movimento reale.</h2>
+        <span>
+          Il profilo fiscale è configurato. Ora basta registrare un introito per
+          far comparire accantonamenti, disponibile e margine operativo.
+        </span>
+      </div>
+      <div className="first-run-actions">
+        <button className="primary-button" type="button" onClick={onGoToMovements}>
+          <Plus size={17} />
+          Registra primo movimento
+        </button>
+        <button className="outline-button" type="button" onClick={onGoToProfile}>
+          Controlla profilo fiscale
+        </button>
+      </div>
+    </section>
   )
 }
 
@@ -597,6 +750,12 @@ function ReservesView({
         detail={compact ? 'Stima immediata' : 'Stima aggiornata in tempo reale'}
       />
       <ReserveRows estimate={estimate} />
+      {estimate.grossIncome > 0 && estimate.totalReserve > estimate.grossIncome ? (
+        <p className="reserve-warning">
+          I minimi previdenziali configurati superano gli introiti dell’anno:
+          la stima iniziale può risultare più alta dei primi incassi.
+        </p>
+      ) : null}
       {!compact ? (
         <p className="section-note">
           Coefficiente {formatPercent(profile.taxableCoefficient)}, imposta{' '}
@@ -676,9 +835,11 @@ function AnalyticsView({ movements }: { movements: Movement[] }) {
 function ProfileView({
   profile,
   onChange,
+  onRestartSetup,
 }: {
   profile: TaxProfile
   onChange: (field: keyof TaxProfile, value: string) => void
+  onRestartSetup: () => void
 }) {
   return (
     <section className="ledger-section profile-view">
@@ -717,6 +878,18 @@ function ProfileView({
           value={profile.integrativeMinimum}
           onChange={(value) => onChange('integrativeMinimum', String(value))}
         />
+      </div>
+      <div className="profile-guide">
+        <div>
+          <strong>Configurazione guidata</strong>
+          <span>
+            Riapre il percorso iniziale senza cancellare movimenti, obiettivi o
+            backup.
+          </span>
+        </div>
+        <button className="outline-button" type="button" onClick={onRestartSetup}>
+          Rivedi configurazione
+        </button>
       </div>
     </section>
   )
@@ -1223,9 +1396,11 @@ function CurrencyInput({
   placeholder?: string
   required?: boolean
 }) {
+  const displayValue = value === 0 || value === '0' ? '' : value
+
   return (
     <NumericFormat
-      value={value}
+      value={displayValue}
       decimalScale={2}
       decimalSeparator=","
       thousandSeparator="."

@@ -6,6 +6,7 @@ export type TaxProfile = {
   integrativeRate: number
   integrativeMinimum: number
   activityYear: number
+  setupCompleted?: boolean
 }
 
 export type Income = {
@@ -71,6 +72,7 @@ export const defaultTaxProfile: TaxProfile = {
   integrativeRate: 0.02,
   integrativeMinimum: 66,
   activityYear: 2,
+  setupCompleted: false,
 }
 
 export function sumAmounts<T extends { amount: number }>(items: T[]) {
