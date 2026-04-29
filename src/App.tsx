@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { NumericFormat } from 'react-number-format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   ArrowDown,
@@ -10,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
-  Filter,
   Goal as GoalIcon,
   Home,
   Info,
@@ -18,7 +18,6 @@ import {
   MoreVertical,
   Plus,
   SlidersHorizontal,
-  Sun,
   Target,
   Trash2,
   WalletCards,
@@ -43,12 +42,23 @@ import {
   formatCurrency,
   formatPercent,
   getAvailableYears,
+  type FiscalEstimate,
   type Goal,
   type Movement,
   type MovementStatus,
   type MovementType,
   type TaxProfile,
 } from './lib/finance'
+
+type ActiveView =
+  | 'overview'
+  | 'movements'
+  | 'reserves'
+  | 'goals'
+  | 'deadlines'
+  | 'analytics'
+  | 'profile'
+  | 'backup'
 
 type Toast = {
   id: number
@@ -60,16 +70,16 @@ const currentYear = new Date().getFullYear()
 const emptyMovements: Movement[] = []
 const emptyGoals: Goal[] = []
 
-const navItems = [
-  ['Panoramica', Home],
-  ['Movimenti', ArrowUpFromLine],
-  ['Accantonamenti', WalletCards],
-  ['Obiettivi', Target],
-  ['Scadenze', CalendarDays],
-  ['Analisi', BarChart3],
-  ['Profilo fiscale', SlidersHorizontal],
-  ['Dati & backup', Database],
-] as const
+const navItems: Array<[ActiveView, string, typeof Home]> = [
+  ['overview', 'Panoramica', Home],
+  ['movements', 'Movimenti', ArrowUpFromLine],
+  ['reserves', 'Accantonamenti', WalletCards],
+  ['goals', 'Obiettivi', Target],
+  ['deadlines', 'Scadenze', CalendarDays],
+  ['analytics', 'Analisi', BarChart3],
+  ['profile', 'Profilo fiscale', SlidersHorizontal],
+  ['backup', 'Dati & backup', Database],
+]
 
 const incomeStatuses: Array<[MovementStatus, string]> = [
   ['collected', 'Incassato'],
@@ -82,6 +92,7 @@ const expenseStatuses: Array<[MovementStatus, string]> = [
 ]
 
 function App() {
+  const [activeView, setActiveView] = useState<ActiveView>('overview')
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [movementType, setMovementType] = useState<MovementType>('income')
@@ -135,6 +146,7 @@ function App() {
   )
   const expenseTotal = fiscalEstimate.expenses
   const operationalMargin = fiscalEstimate.grossIncome - expenseTotal
+
   function notify(message: string) {
     const id = Date.now()
 
@@ -142,6 +154,16 @@ function App() {
     window.setTimeout(() => {
       setToast((current) => (current?.id === id ? null : current))
     }, 2800)
+  }
+
+  function selectView(view: ActiveView) {
+    setActiveView(view)
+    if (view !== 'movements') {
+      setDrawerOpen(false)
+    }
+    if (view === 'movements') {
+      setDrawerOpen(true)
+    }
   }
 
   function setType(type: MovementType) {
@@ -247,31 +269,41 @@ function App() {
           <Menu size={20} />
         </button>
         <nav>
-          {navItems.slice(0, 6).map(([label, Icon], index) => (
-            <a className={index === 0 ? 'active' : ''} href={`#${label}`} key={label}>
+          {navItems.slice(0, 6).map(([view, label, Icon]) => (
+            <button
+              className={activeView === view ? 'active' : ''}
+              type="button"
+              key={view}
+              onClick={() => selectView(view)}
+            >
               <Icon size={19} />
               {label}
-            </a>
+            </button>
           ))}
         </nav>
         <div className="nav-secondary">
-          {navItems.slice(6).map(([label, Icon]) => (
-            <a href={`#${label}`} key={label}>
+          {navItems.slice(6).map(([view, label, Icon]) => (
+            <button
+              className={activeView === view ? 'active' : ''}
+              type="button"
+              key={view}
+              onClick={() => selectView(view)}
+            >
               <Icon size={19} />
               {label}
-            </a>
+            </button>
           ))}
         </div>
-        <a className="info-link" href="#Informazioni">
+        <button className="info-link" type="button">
           <Info size={18} />
           Informazioni
-        </a>
+        </button>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div>
-            <h1>Fondi e tasse</h1>
+            <h1>{viewTitle(activeView)}</h1>
             <p>
               Dati locali nel tuo browser <span aria-hidden="true" />
             </p>
@@ -307,10 +339,6 @@ function App() {
             <button className="outline-button" type="button">
               Gen - Dic {selectedYear}
             </button>
-            <button className="outline-button" type="button">
-              <Filter size={16} />
-              Filtri
-            </button>
             <button className="outline-button" type="button" onClick={handleExport}>
               <ArrowDownToLine size={16} />
               Backup
@@ -323,9 +351,6 @@ function App() {
               <ArrowUpFromLine size={16} />
               Importa
             </button>
-            <button className="theme-button" type="button" aria-label="Tema">
-              <Sun size={19} />
-            </button>
             <input
               ref={backupInputRef}
               hidden
@@ -336,245 +361,71 @@ function App() {
           </div>
         </header>
 
-        <section className="summary-strip" aria-label="Sintesi fondi">
-          <SummaryItem
-            label="Disponibile"
-            value={formatCurrency(fiscalEstimate.availableAfterReserve)}
-            detail="Dopo spese e accantonamenti"
-            tone="positive"
+        {activeView !== 'profile' && activeView !== 'backup' ? (
+          <SummaryStrip
+            estimate={fiscalEstimate}
+            expenseTotal={expenseTotal}
+            operationalMargin={operationalMargin}
           />
-          <SummaryItem
-            label="Da accantonare"
-            value={formatCurrency(fiscalEstimate.totalReserve)}
-            detail={`${formatPercent(fiscalEstimate.effectiveReserveRate)} degli introiti`}
-            tone="warning"
-          />
-          <SummaryItem
-            label="Introiti"
-            value={formatCurrency(fiscalEstimate.grossIncome)}
-            detail="Totale lordo"
-          />
-          <SummaryItem
-            label="Spese"
-            value={formatCurrency(expenseTotal)}
-            detail="Totale macroscopiche"
-          />
-          <SummaryItem
-            label="Margine operativo"
-            value={formatCurrency(operationalMargin)}
-            detail="Introiti - Spese"
-            tone="positive"
-          />
-        </section>
+        ) : null}
 
-        <div className="content-shell">
+        <div className={activeView === 'movements' ? 'content-shell' : 'content-shell single'}>
           <section className="main-ledger">
-            <section className="ledger-section" id="Movimenti">
-              <SectionHeader
-                title="Movimenti"
-                detail="Ultimi inseriti"
-                action={
-                  <div className="section-actions">
-                    <button className="text-button" type="button">
-                      <ArrowUpFromLine size={16} />
-                      Importa
-                    </button>
-                    <button className="text-button" type="button" onClick={handleExport}>
-                      <ArrowDownToLine size={16} />
-                      Esporta
-                    </button>
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={() => setDrawerOpen(true)}
-                    >
-                      <Plus size={17} />
-                      Nuovo
-                    </button>
-                  </div>
-                }
-              />
-              <MovementTable movements={annualMovements} onDelete={removeMovement} />
-            </section>
-
-            <section className="ledger-section" id="Accantonamenti">
-              <SectionHeader
-                title="Accantonamenti"
-                detail="Stima aggiornata in tempo reale"
-                action={<button className="text-button" type="button">Dettaglio calcolo</button>}
-              />
-              <ReserveRows estimate={fiscalEstimate} />
-            </section>
-
-            <section className="ledger-section" id="Obiettivi">
-              <SectionHeader
-                title="Obiettivi"
-                detail="Prossimi traguardi"
-                action={<button className="text-button" type="button">+ Nuovo obiettivo</button>}
-              />
-              <GoalRows goals={goals} profile={profile} />
-              <GoalForm
+            {activeView === 'overview' ? (
+              <OverviewView
+                movements={annualMovements}
+                goals={goals}
+                profile={profile}
+                estimate={fiscalEstimate}
+                onDelete={removeMovement}
+                onGoToMovements={() => selectView('movements')}
                 goalForm={goalForm}
                 setGoalForm={setGoalForm}
-                onSubmit={submitGoal}
+                onSubmitGoal={submitGoal}
               />
-            </section>
+            ) : null}
+            {activeView === 'movements' ? (
+              <MovementsView
+                movements={annualMovements}
+                onDelete={removeMovement}
+                onNew={() => setDrawerOpen(true)}
+                onExport={handleExport}
+                onImport={() => backupInputRef.current?.click()}
+              />
+            ) : null}
+            {activeView === 'reserves' ? (
+              <ReservesView estimate={fiscalEstimate} profile={profile} />
+            ) : null}
+            {activeView === 'goals' ? (
+              <GoalsView
+                goals={goals}
+                profile={profile}
+                goalForm={goalForm}
+                setGoalForm={setGoalForm}
+                onSubmitGoal={submitGoal}
+              />
+            ) : null}
+            {activeView === 'deadlines' ? <DeadlinesView selectedYear={selectedYear} /> : null}
+            {activeView === 'analytics' ? (
+              <AnalyticsView movements={annualMovements} />
+            ) : null}
+            {activeView === 'profile' ? (
+              <ProfileView profile={profile} onChange={updateProfile} />
+            ) : null}
+            {activeView === 'backup' ? (
+              <BackupView onExport={handleExport} onImport={() => backupInputRef.current?.click()} />
+            ) : null}
           </section>
 
-          {drawerOpen ? (
-            <aside className="drawer" aria-label="Nuovo movimento">
-              <div className="drawer-header">
-                <h2>Nuovo movimento</h2>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  aria-label="Chiudi drawer"
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="segmented-control" role="tablist" aria-label="Tipo movimento">
-                <button
-                  className={movementType === 'income' ? 'selected' : ''}
-                  type="button"
-                  onClick={() => setType('income')}
-                >
-                  Introito
-                </button>
-                <button
-                  className={movementType === 'expense' ? 'selected' : ''}
-                  type="button"
-                  onClick={() => setType('expense')}
-                >
-                  Spesa
-                </button>
-              </div>
-              <form className="drawer-form" onSubmit={submitMovement}>
-                <Field label="Data">
-                  <input
-                    type="date"
-                    value={movementForm.date}
-                    onChange={(event) =>
-                      setMovementForm({ ...movementForm, date: event.target.value })
-                    }
-                  />
-                </Field>
-                <Field label="Descrizione">
-                  <input
-                    value={movementForm.description}
-                    placeholder={
-                      movementType === 'income'
-                        ? 'Es. Seduta psicoterapia'
-                        : 'Es. Commercialista'
-                    }
-                    onChange={(event) =>
-                      setMovementForm({
-                        ...movementForm,
-                        description: event.target.value,
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Categoria">
-                  <select
-                    value={movementForm.category}
-                    onChange={(event) =>
-                      setMovementForm({
-                        ...movementForm,
-                        category: event.target.value,
-                      })
-                    }
-                  >
-                    {(movementType === 'income'
-                      ? ['Sedute', 'Consulenze', 'Valutazioni', 'Altro']
-                      : ['Spesa fissa', 'Servizi professionali', 'Quote e iscrizioni', 'Software', 'Altro']
-                    ).map((category) => (
-                      <option key={category}>{category}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Importo (€)">
-                  <input
-                    required
-                    min="0"
-                    step="0.01"
-                    type="number"
-                    value={movementForm.amount}
-                    placeholder="0,00"
-                    onChange={(event) =>
-                      setMovementForm({ ...movementForm, amount: event.target.value })
-                    }
-                  />
-                </Field>
-                <Field label="Stato">
-                  <select
-                    value={movementForm.status}
-                    onChange={(event) =>
-                      setMovementForm({
-                        ...movementForm,
-                        status: event.target.value as MovementStatus,
-                      })
-                    }
-                  >
-                    {(movementType === 'income' ? incomeStatuses : expenseStatuses).map(
-                      ([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </Field>
-                <Field label="Note (facoltative)">
-                  <textarea
-                    value={movementForm.notes}
-                    placeholder="Aggiungi una nota..."
-                    onChange={(event) =>
-                      setMovementForm({ ...movementForm, notes: event.target.value })
-                    }
-                  />
-                </Field>
-                <div className="drawer-actions">
-                  <button className="primary-button" type="submit">
-                    Salva
-                  </button>
-                  <button
-                    className="outline-button"
-                    type="button"
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    Annulla
-                  </button>
-                </div>
-              </form>
-
-              <div className="profile-panel" id="Profilo fiscale">
-                <h3>Profilo fiscale</h3>
-                <div className="profile-grid">
-                  <NumberSetting
-                    label="Coeff."
-                    value={profile.taxableCoefficient}
-                    onChange={(value) => updateProfile('taxableCoefficient', value)}
-                  />
-                  <NumberSetting
-                    label="Aliquota"
-                    value={profile.substituteTaxRate}
-                    onChange={(value) => updateProfile('substituteTaxRate', value)}
-                  />
-                  <NumberSetting
-                    label="Soggettivo"
-                    value={profile.pensionRate}
-                    onChange={(value) => updateProfile('pensionRate', value)}
-                  />
-                  <NumberSetting
-                    label="Integrativo"
-                    value={profile.integrativeRate}
-                    onChange={(value) => updateProfile('integrativeRate', value)}
-                  />
-                </div>
-              </div>
-            </aside>
+          {activeView === 'movements' && drawerOpen ? (
+            <MovementDrawer
+              movementType={movementType}
+              movementForm={movementForm}
+              setMovementForm={setMovementForm}
+              setType={setType}
+              onClose={() => setDrawerOpen(false)}
+              onSubmit={submitMovement}
+            />
           ) : null}
         </div>
 
@@ -592,6 +443,481 @@ function App() {
       {toast ? <div className="toast">{toast.message}</div> : null}
     </main>
   )
+}
+
+function SummaryStrip({
+  estimate,
+  expenseTotal,
+  operationalMargin,
+}: {
+  estimate: FiscalEstimate
+  expenseTotal: number
+  operationalMargin: number
+}) {
+  return (
+    <section className="summary-strip" aria-label="Sintesi fondi">
+      <SummaryItem
+        label="Disponibile"
+        value={formatCurrency(estimate.availableAfterReserve)}
+        detail="Dopo spese e accantonamenti"
+        tone="positive"
+      />
+      <SummaryItem
+        label="Da accantonare"
+        value={formatCurrency(estimate.totalReserve)}
+        detail={`${formatPercent(estimate.effectiveReserveRate)} degli introiti`}
+        tone="warning"
+      />
+      <SummaryItem
+        label="Introiti"
+        value={formatCurrency(estimate.grossIncome)}
+        detail="Totale lordo"
+      />
+      <SummaryItem
+        label="Spese"
+        value={formatCurrency(expenseTotal)}
+        detail="Totale macroscopiche"
+      />
+      <SummaryItem
+        label="Margine operativo"
+        value={formatCurrency(operationalMargin)}
+        detail="Introiti - Spese"
+        tone="positive"
+      />
+    </section>
+  )
+}
+
+function OverviewView({
+  movements,
+  goals,
+  profile,
+  estimate,
+  onDelete,
+  onGoToMovements,
+  goalForm,
+  setGoalForm,
+  onSubmitGoal,
+}: {
+  movements: Movement[]
+  goals: Goal[]
+  profile: TaxProfile
+  estimate: FiscalEstimate
+  onDelete: (id?: string) => void
+  onGoToMovements: () => void
+  goalForm: GoalFormState
+  setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
+  onSubmitGoal: (event: FormEvent) => void
+}) {
+  return (
+    <>
+      <MovementsView
+        movements={movements.slice(0, 5)}
+        onDelete={onDelete}
+        onNew={onGoToMovements}
+        compact
+      />
+      <ReservesView estimate={estimate} profile={profile} compact />
+      <GoalsView
+        goals={goals}
+        profile={profile}
+        goalForm={goalForm}
+        setGoalForm={setGoalForm}
+        onSubmitGoal={onSubmitGoal}
+        compact
+      />
+    </>
+  )
+}
+
+function MovementsView({
+  movements,
+  onDelete,
+  onNew,
+  onExport,
+  onImport,
+  compact = false,
+}: {
+  movements: Movement[]
+  onDelete: (id?: string) => void
+  onNew: () => void
+  onExport?: () => void
+  onImport?: () => void
+  compact?: boolean
+}) {
+  return (
+    <section className="ledger-section">
+      <SectionHeader
+        title="Movimenti"
+        detail={compact ? 'Ultimi inseriti' : 'Registro annuale'}
+        action={
+          <div className="section-actions">
+            {onImport ? (
+              <button className="text-button" type="button" onClick={onImport}>
+                <ArrowUpFromLine size={16} />
+                Importa
+              </button>
+            ) : null}
+            {onExport ? (
+              <button className="text-button" type="button" onClick={onExport}>
+                <ArrowDownToLine size={16} />
+                Esporta
+              </button>
+            ) : null}
+            <button className="primary-button" type="button" onClick={onNew}>
+              <Plus size={17} />
+              Nuovo
+            </button>
+          </div>
+        }
+      />
+      <MovementTable movements={movements} onDelete={onDelete} />
+    </section>
+  )
+}
+
+function ReservesView({
+  estimate,
+  profile,
+  compact = false,
+}: {
+  estimate: FiscalEstimate
+  profile: TaxProfile
+  compact?: boolean
+}) {
+  return (
+    <section className="ledger-section">
+      <SectionHeader
+        title="Accantonamenti"
+        detail={compact ? 'Stima immediata' : 'Stima aggiornata in tempo reale'}
+      />
+      <ReserveRows estimate={estimate} />
+      {!compact ? (
+        <p className="section-note">
+          Coefficiente {formatPercent(profile.taxableCoefficient)}, imposta{' '}
+          {formatPercent(profile.substituteTaxRate)}, contributi configurabili.
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+function GoalsView({
+  goals,
+  profile,
+  goalForm,
+  setGoalForm,
+  onSubmitGoal,
+  compact = false,
+}: {
+  goals: Goal[]
+  profile: TaxProfile
+  goalForm: GoalFormState
+  setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
+  onSubmitGoal: (event: FormEvent) => void
+  compact?: boolean
+}) {
+  return (
+    <section className="ledger-section">
+      <SectionHeader
+        title="Obiettivi"
+        detail={compact ? 'Prossimi traguardi' : 'Risparmio e lordo necessario'}
+      />
+      <GoalRows goals={goals} profile={profile} />
+      <GoalForm
+        goalForm={goalForm}
+        setGoalForm={setGoalForm}
+        onSubmit={onSubmitGoal}
+      />
+    </section>
+  )
+}
+
+function AnalyticsView({ movements }: { movements: Movement[] }) {
+  const incomeByCategory = groupMovements(movements, 'income')
+  const expenseByCategory = groupMovements(movements, 'expense')
+  const monthlyRows = groupByMonth(movements)
+
+  return (
+    <section className="ledger-section analytics-view">
+      <SectionHeader title="Analisi" detail="Distribuzione per anno selezionato" />
+      <div className="analytics-grid">
+        <BarPanel title="Introiti per categoria" rows={incomeByCategory} tone="income" />
+        <BarPanel title="Spese per categoria" rows={expenseByCategory} tone="expense" />
+      </div>
+      <div className="analysis-panel wide-analysis">
+        <h3>Andamento mensile</h3>
+        <div className="monthly-bars">
+          {monthlyRows.map((row) => {
+            const max = Math.max(...monthlyRows.map((item) => item.total), 1)
+
+            return (
+              <div className="month-row" key={row.label}>
+                <span>{row.label}</span>
+                <div>
+                  <i style={{ width: `${(row.income / max) * 100}%` }} />
+                  <em style={{ width: `${(row.expense / max) * 100}%` }} />
+                </div>
+                <strong>{formatCurrency(row.income - row.expense)}</strong>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ProfileView({
+  profile,
+  onChange,
+}: {
+  profile: TaxProfile
+  onChange: (field: keyof TaxProfile, value: string) => void
+}) {
+  return (
+    <section className="ledger-section profile-view">
+      <SectionHeader
+        title="Profilo fiscale"
+        detail="Parametri usati per le stime operative"
+      />
+      <div className="profile-grid large">
+        <NumberSetting
+          label="Coefficiente redditività"
+          value={profile.taxableCoefficient}
+          onChange={(value) => onChange('taxableCoefficient', value)}
+        />
+        <NumberSetting
+          label="Aliquota imposta sostitutiva"
+          value={profile.substituteTaxRate}
+          onChange={(value) => onChange('substituteTaxRate', value)}
+        />
+        <NumberSetting
+          label="Contributo soggettivo"
+          value={profile.pensionRate}
+          onChange={(value) => onChange('pensionRate', value)}
+        />
+        <CurrencyField
+          label="Minimo soggettivo"
+          value={profile.pensionMinimum}
+          onChange={(value) => onChange('pensionMinimum', String(value))}
+        />
+        <NumberSetting
+          label="Contributo integrativo"
+          value={profile.integrativeRate}
+          onChange={(value) => onChange('integrativeRate', value)}
+        />
+        <CurrencyField
+          label="Minimo integrativo"
+          value={profile.integrativeMinimum}
+          onChange={(value) => onChange('integrativeMinimum', String(value))}
+        />
+      </div>
+    </section>
+  )
+}
+
+function BackupView({
+  onExport,
+  onImport,
+}: {
+  onExport: () => void
+  onImport: () => void
+}) {
+  return (
+    <section className="ledger-section backup-view">
+      <SectionHeader
+        title="Dati & backup"
+        detail="Portabilità locale del database"
+      />
+      <div className="backup-actions">
+        <button className="primary-button" type="button" onClick={onExport}>
+          <ArrowDownToLine size={17} />
+          Esporta backup JSON
+        </button>
+        <button className="outline-button" type="button" onClick={onImport}>
+          <ArrowUpFromLine size={17} />
+          Importa backup JSON
+        </button>
+      </div>
+      <p className="section-note">
+        Il backup include movimenti, obiettivi, impostazioni fiscali e metadati di
+        versione. L’import sostituisce movimenti e obiettivi locali dopo conferma.
+      </p>
+    </section>
+  )
+}
+
+function DeadlinesView({ selectedYear }: { selectedYear: number }) {
+  return (
+    <section className="ledger-section deadlines-view">
+      <SectionHeader title="Scadenze" detail="Promemoria operativo" />
+      <div className="deadline-list">
+        <DeadlineRow date={`30/06/${selectedYear}`} title="Saldo e primo acconto" />
+        <DeadlineRow date={`30/11/${selectedYear}`} title="Secondo acconto" />
+        <DeadlineRow date={`01/10/${selectedYear}`} title="Comunicazione e saldo previdenziale" />
+      </div>
+    </section>
+  )
+}
+
+function MovementDrawer({
+  movementType,
+  movementForm,
+  setMovementForm,
+  setType,
+  onClose,
+  onSubmit,
+}: {
+  movementType: MovementType
+  movementForm: MovementFormState
+  setMovementForm: React.Dispatch<React.SetStateAction<MovementFormState>>
+  setType: (type: MovementType) => void
+  onClose: () => void
+  onSubmit: (event: FormEvent) => void
+}) {
+  return (
+    <aside className="drawer" aria-label="Nuovo movimento">
+      <div className="drawer-header">
+        <h2>Nuovo movimento</h2>
+        <button
+          className="ghost-button"
+          type="button"
+          aria-label="Chiudi drawer"
+          onClick={onClose}
+        >
+          <X size={20} />
+        </button>
+      </div>
+      <div className="segmented-control" role="tablist" aria-label="Tipo movimento">
+        <button
+          className={movementType === 'income' ? 'selected' : ''}
+          type="button"
+          onClick={() => setType('income')}
+        >
+          Introito
+        </button>
+        <button
+          className={movementType === 'expense' ? 'selected' : ''}
+          type="button"
+          onClick={() => setType('expense')}
+        >
+          Spesa
+        </button>
+      </div>
+      <form className="drawer-form" onSubmit={onSubmit}>
+        <Field label="Data">
+          <input
+            type="date"
+            value={movementForm.date}
+            onChange={(event) =>
+              setMovementForm({ ...movementForm, date: event.target.value })
+            }
+          />
+        </Field>
+        <Field label="Descrizione">
+          <input
+            value={movementForm.description}
+            placeholder={
+              movementType === 'income'
+                ? 'Es. Seduta psicoterapia'
+                : 'Es. Commercialista'
+            }
+            onChange={(event) =>
+              setMovementForm({
+                ...movementForm,
+                description: event.target.value,
+              })
+            }
+          />
+        </Field>
+        <Field label="Categoria">
+          <select
+            value={movementForm.category}
+            onChange={(event) =>
+              setMovementForm({
+                ...movementForm,
+                category: event.target.value,
+              })
+            }
+          >
+            {(movementType === 'income'
+              ? ['Sedute', 'Consulenze', 'Valutazioni', 'Altro']
+              : [
+                  'Spesa fissa',
+                  'Servizi professionali',
+                  'Quote e iscrizioni',
+                  'Software',
+                  'Altro',
+                ]
+            ).map((category) => (
+              <option key={category}>{category}</option>
+            ))}
+          </select>
+        </Field>
+        <CurrencyField
+          label="Importo"
+          value={movementForm.amount}
+          onChange={(value) =>
+            setMovementForm({ ...movementForm, amount: String(value) })
+          }
+          required
+        />
+        <Field label="Stato">
+          <select
+            value={movementForm.status}
+            onChange={(event) =>
+              setMovementForm({
+                ...movementForm,
+                status: event.target.value as MovementStatus,
+              })
+            }
+          >
+            {(movementType === 'income' ? incomeStatuses : expenseStatuses).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ),
+            )}
+          </select>
+        </Field>
+        <Field label="Note (facoltative)">
+          <textarea
+            value={movementForm.notes}
+            placeholder="Aggiungi una nota..."
+            onChange={(event) =>
+              setMovementForm({ ...movementForm, notes: event.target.value })
+            }
+          />
+        </Field>
+        <div className="drawer-actions">
+          <button className="primary-button" type="submit">
+            Salva
+          </button>
+          <button className="outline-button" type="button" onClick={onClose}>
+            Annulla
+          </button>
+        </div>
+      </form>
+    </aside>
+  )
+}
+
+type MovementFormState = {
+  date: string
+  description: string
+  category: string
+  amount: string
+  status: MovementStatus
+  notes: string
+}
+
+type GoalFormState = {
+  name: string
+  targetAmount: string
+  savedAmount: string
+  targetDate: string
 }
 
 function SummaryItem({
@@ -706,11 +1032,7 @@ function MovementTable({
   )
 }
 
-function ReserveRows({
-  estimate,
-}: {
-  estimate: ReturnType<typeof estimateFiscalPosition>
-}) {
+function ReserveRows({ estimate }: { estimate: FiscalEstimate }) {
   const rows = [
     ['Imposta sostitutiva', estimate.substituteTaxDue, estimate.substituteTaxDue * 1.65],
     ['Contributo soggettivo', estimate.pensionDue, estimate.pensionDue * 1.65],
@@ -804,20 +1126,8 @@ function GoalForm({
   setGoalForm,
   onSubmit,
 }: {
-  goalForm: {
-    name: string
-    targetAmount: string
-    savedAmount: string
-    targetDate: string
-  }
-  setGoalForm: React.Dispatch<
-    React.SetStateAction<{
-      name: string
-      targetAmount: string
-      savedAmount: string
-      targetDate: string
-    }>
-  >
+  goalForm: GoalFormState
+  setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
   onSubmit: (event: FormEvent) => void
 }) {
   return (
@@ -827,25 +1137,19 @@ function GoalForm({
         placeholder="Nuovo obiettivo"
         onChange={(event) => setGoalForm({ ...goalForm, name: event.target.value })}
       />
-      <input
-        required
-        min="0"
-        step="0.01"
-        type="number"
+      <CurrencyInput
         value={goalForm.targetAmount}
         placeholder="Target"
-        onChange={(event) =>
-          setGoalForm({ ...goalForm, targetAmount: event.target.value })
+        required
+        onChange={(value) =>
+          setGoalForm({ ...goalForm, targetAmount: String(value) })
         }
       />
-      <input
-        min="0"
-        step="0.01"
-        type="number"
+      <CurrencyInput
         value={goalForm.savedAmount}
         placeholder="Già accantonato"
-        onChange={(event) =>
-          setGoalForm({ ...goalForm, savedAmount: event.target.value })
+        onChange={(value) =>
+          setGoalForm({ ...goalForm, savedAmount: String(value) })
         }
       />
       <input
@@ -859,6 +1163,91 @@ function GoalForm({
         Salva obiettivo
       </button>
     </form>
+  )
+}
+
+function CurrencyField({
+  label,
+  value,
+  onChange,
+  required = false,
+}: {
+  label: string
+  value: number | string
+  onChange: (value: number) => void
+  required?: boolean
+}) {
+  return (
+    <Field label={label}>
+      <CurrencyInput value={value} onChange={onChange} required={required} />
+    </Field>
+  )
+}
+
+function CurrencyInput({
+  value,
+  onChange,
+  placeholder = '0,00 €',
+  required = false,
+}: {
+  value: number | string
+  onChange: (value: number) => void
+  placeholder?: string
+  required?: boolean
+}) {
+  return (
+    <NumericFormat
+      value={value}
+      decimalScale={2}
+      decimalSeparator=","
+      thousandSeparator="."
+      fixedDecimalScale={false}
+      suffix=" €"
+      allowNegative={false}
+      placeholder={placeholder}
+      required={required}
+      onValueChange={(values) => onChange(values.floatValue ?? 0)}
+    />
+  )
+}
+
+function BarPanel({
+  title,
+  rows,
+  tone,
+}: {
+  title: string
+  rows: Array<{ label: string; value: number }>
+  tone: 'income' | 'expense'
+}) {
+  const max = Math.max(...rows.map((row) => row.value), 1)
+
+  return (
+    <div className="analysis-panel">
+      <h3>{title}</h3>
+      {rows.length > 0 ? (
+        rows.map((row) => (
+          <div className="analysis-row" key={row.label}>
+            <span>{row.label}</span>
+            <div>
+              <i className={tone} style={{ width: `${(row.value / max) * 100}%` }} />
+            </div>
+            <strong>{formatCurrency(row.value)}</strong>
+          </div>
+        ))
+      ) : (
+        <p className="empty-text">Nessun dato disponibile.</p>
+      )}
+    </div>
+  )
+}
+
+function DeadlineRow({ date, title }: { date: string; title: string }) {
+  return (
+    <div className="deadline-row">
+      <strong>{date}</strong>
+      <span>{title}</span>
+    </div>
   )
 }
 
@@ -900,6 +1289,49 @@ function NumberSetting({
   )
 }
 
+function groupMovements(movements: Movement[], type: MovementType) {
+  const grouped = new Map<string, number>()
+
+  for (const movement of movements) {
+    if (movement.type !== type) {
+      continue
+    }
+    grouped.set(
+      movement.category,
+      (grouped.get(movement.category) ?? 0) + movement.amount,
+    )
+  }
+
+  return [...grouped.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+}
+
+function groupByMonth(movements: Movement[]) {
+  const labels = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+
+  return labels.map((label, index) => {
+    const monthMovements = movements.filter((movement) => {
+      const date = new Date(`${movement.date}T00:00:00`)
+
+      return date.getMonth() === index
+    })
+    const income = monthMovements
+      .filter((movement) => movement.type === 'income')
+      .reduce((sum, movement) => sum + movement.amount, 0)
+    const expense = monthMovements
+      .filter((movement) => movement.type === 'expense')
+      .reduce((sum, movement) => sum + movement.amount, 0)
+
+    return {
+      label,
+      income,
+      expense,
+      total: Math.max(income, expense),
+    }
+  })
+}
+
 function statusLabel(status: MovementStatus) {
   return {
     collected: 'Incassato',
@@ -907,6 +1339,19 @@ function statusLabel(status: MovementStatus) {
     paid: 'Pagata',
     to_pay: 'Da pagare',
   }[status]
+}
+
+function viewTitle(view: ActiveView) {
+  return {
+    overview: 'Fondi e tasse',
+    movements: 'Movimenti',
+    reserves: 'Accantonamenti',
+    goals: 'Obiettivi',
+    deadlines: 'Scadenze',
+    analytics: 'Analisi',
+    profile: 'Profilo fiscale',
+    backup: 'Dati & backup',
+  }[view]
 }
 
 function formatDate(date: string) {
