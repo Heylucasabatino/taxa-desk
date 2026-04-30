@@ -55,22 +55,33 @@ export type Goal = {
 export type FiscalEstimate = {
   grossIncome: number
   expenses: number
+  projectedIncome: number
+  projectedExpenses: number
+  forecastGrossIncome: number
+  forecastExpenses: number
   taxableRevenue: number
   pensionDue: number
   integrativeDue: number
   substituteTaxDue: number
   totalReserve: number
   availableAfterReserve: number
+  projectedAvailableAfterReserve: number
   effectiveReserveRate: number
 }
+
+export const enpapMinimums = {
+  standard: 856,
+  newMember: 286,
+  integrative: 66,
+} as const
 
 export const defaultTaxProfile: TaxProfile = {
   taxableCoefficient: 0.78,
   substituteTaxRate: 0.05,
   pensionRate: 0.1,
-  pensionMinimum: 286,
+  pensionMinimum: enpapMinimums.standard,
   integrativeRate: 0.02,
-  integrativeMinimum: 66,
+  integrativeMinimum: enpapMinimums.integrative,
   activityYear: 2,
   setupCompleted: false,
 }
@@ -83,11 +94,26 @@ export function estimateFiscalPosition(
   movements: Movement[],
   profile: TaxProfile,
 ): FiscalEstimate {
-  const incomes = movements.filter((movement) => movement.type === 'income')
-  const expenses = movements.filter((movement) => movement.type === 'expense')
+  const incomes = movements.filter(
+    (movement) => movement.type === 'income' && movement.status === 'collected',
+  )
+  const expenses = movements.filter(
+    (movement) => movement.type === 'expense' && movement.status === 'paid',
+  )
+  const projectedIncomes = movements.filter(
+    (movement) => movement.type === 'income' && movement.status === 'pending',
+  )
+  const projectedExpenses = movements.filter(
+    (movement) => movement.type === 'expense' && movement.status === 'to_pay',
+  )
   const grossIncome = sumAmounts(incomes)
   const expenseTotal = sumAmounts(expenses)
+  const projectedIncome = sumAmounts(projectedIncomes)
+  const projectedExpenseTotal = sumAmounts(projectedExpenses)
+  const forecastGrossIncome = grossIncome + projectedIncome
+  const forecastExpenses = expenseTotal + projectedExpenseTotal
   const taxableRevenue = grossIncome * profile.taxableCoefficient
+  const forecastTaxableRevenue = forecastGrossIncome * profile.taxableCoefficient
   const pensionDue = grossIncome > 0
     ? Math.max(taxableRevenue * profile.pensionRate, profile.pensionMinimum)
     : 0
@@ -100,16 +126,35 @@ export function estimateFiscalPosition(
   )
   const totalReserve = pensionDue + integrativeDue + substituteTaxDue
   const availableAfterReserve = grossIncome - expenseTotal - totalReserve
+  const forecastPensionDue = forecastGrossIncome > 0
+    ? Math.max(forecastTaxableRevenue * profile.pensionRate, profile.pensionMinimum)
+    : 0
+  const forecastIntegrativeDue = forecastGrossIncome > 0
+    ? Math.max(forecastGrossIncome * profile.integrativeRate, profile.integrativeMinimum)
+    : 0
+  const forecastSubstituteTaxDue = Math.max(
+    0,
+    (forecastTaxableRevenue - forecastPensionDue) * profile.substituteTaxRate,
+  )
+  const forecastReserve =
+    forecastPensionDue + forecastIntegrativeDue + forecastSubstituteTaxDue
+  const projectedAvailableAfterReserve =
+    forecastGrossIncome - forecastExpenses - forecastReserve
 
   return {
     grossIncome,
     expenses: expenseTotal,
+    projectedIncome,
+    projectedExpenses: projectedExpenseTotal,
+    forecastGrossIncome,
+    forecastExpenses,
     taxableRevenue,
     pensionDue,
     integrativeDue,
     substituteTaxDue,
     totalReserve,
     availableAfterReserve,
+    projectedAvailableAfterReserve,
     effectiveReserveRate: grossIncome > 0 ? totalReserve / grossIncome : 0,
   }
 }

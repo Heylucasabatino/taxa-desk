@@ -158,7 +158,7 @@ export async function importBackup(payload: unknown) {
   })
 }
 
-function parseBackupPayload(payload: unknown): BackupPayload {
+export function parseBackupPayload(payload: unknown): BackupPayload {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Backup non valido.')
   }

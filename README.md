@@ -1,73 +1,62 @@
-# React + TypeScript + Vite
+# Webapp Gestione Fondi e Tasse
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Applicazione locale React/Vite per tenere sotto controllo incassi, spese, accantonamenti fiscali/previdenziali e obiettivi di risparmio. E pensata come strumento operativo personale, non come gestionale contabile completo.
 
-Currently, two official plugins are available:
+## Funzioni principali
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Configurazione iniziale del profilo fiscale con coefficienti, aliquote e minimi contributivi.
+- Registrazione di introiti e spese con stato reale o previsionale.
+- Panoramica annuale di disponibile, previsionale, incassato, pagato e quota da accantonare.
+- Stima di imposta sostitutiva, contributo soggettivo e contributo integrativo.
+- Obiettivi con target, importo gia accantonato, scadenza e rata mensile stimata.
+- Sezioni per movimenti, accantonamenti, scadenze, analisi, profilo fiscale e backup.
 
-## React Compiler
+## Avvertenza fiscale
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Le cifre sono stime orientative basate sui dati inseriti e sul profilo configurato. Scadenze, aliquote, minimi, proroghe e requisiti fiscali possono cambiare: prima di prendere decisioni o fare versamenti verifica sempre con commercialista, Agenzia Entrate ed ENPAP.
 
-## Expanding the ESLint configuration
+## Dati locali e backup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+I dati restano nel browser, in IndexedDB tramite Dexie, nel database locale `funds-and-taxes`. Non c'e sincronizzazione cloud o backend remoto.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Il backup esporta un file JSON con movimenti, obiettivi, impostazioni fiscali e metadati di versione. L'importazione di un backup sostituisce movimenti e obiettivi locali dopo conferma; le impostazioni fiscali vengono aggiornate dal file importato.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Comandi
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Installa le dipendenze:
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Avvia l'app in sviluppo:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Compila la build di produzione:
+
+```bash
+npm run build
+```
+
+Esegui il lint:
+
+```bash
+npm run lint
+```
+
+Anteprima locale della build:
+
+```bash
+npm run preview
+```
+
+## Limitazioni attuali
+
+- Nessun account utente, sincronizzazione multi-dispositivo o salvataggio server.
+- Nessuna validazione fiscale ufficiale: i calcoli dipendono dai parametri inseriti.
+- Le scadenze sono promemoria statici e non intercettano proroghe o casi particolari.
+- L'import backup non fonde i dati: sostituisce movimenti e obiettivi locali.
+- Non gestisce fatturazione elettronica, documenti, IVA o adempimenti completi.

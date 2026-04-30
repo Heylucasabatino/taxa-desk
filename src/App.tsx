@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react'
 import { NumericFormat } from 'react-number-format'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -14,7 +21,7 @@ import {
   Goal as GoalIcon,
   Home,
   Info,
-  MoreVertical,
+  Pencil,
   Plus,
   SlidersHorizontal,
   Target,
@@ -26,15 +33,18 @@ import './App.css'
 import {
   addGoal,
   addMovement,
+  type BackupPayload,
   db,
   deleteRecord,
   ensureMovementMigration,
   exportBackup,
   importBackup,
+  parseBackupPayload,
   saveProfile,
 } from './lib/db'
 import {
   defaultTaxProfile,
+  enpapMinimums,
   estimateFiscalPosition,
   estimateGoalPlan,
   filterMovementsByYear,
@@ -62,6 +72,13 @@ type ActiveView =
 type Toast = {
   id: number
   message: string
+  actionLabel?: string
+  onAction?: () => void
+}
+
+type PendingImport = {
+  fileName: string
+  payload: BackupPayload
 }
 
 const today = new Date().toISOString().slice(0, 10)
@@ -110,13 +127,15 @@ const expenseStatuses: Array<[MovementStatus, string]> = [
 
 const helpText = {
   available:
-    'Stima di quanto resta dopo spese registrate e accantonamenti fiscali/previdenziali. Se e negativo, i minimi configurati superano gli incassi registrati.',
+    'Cassa reale stimata: introiti incassati meno spese pagate e accantonamenti fiscali/previdenziali sugli incassi.',
+  projectedAvailable:
+    'Scenario previsionale: include anche introiti da incassare e spese da pagare.',
   reserve:
-    'Somma prudenziale da non considerare spendibile perche destinata a imposte e contributi stimati.',
+    'Somma prudenziale da non considerare spendibile perche destinata a imposte e contributi stimati sugli incassi reali.',
   grossIncome:
-    'Totale degli introiti registrati nell’anno selezionato. Le spese non lo riducono nel regime forfettario.',
+    'Totale degli introiti incassati nell’anno selezionato. Gli importi da incassare restano nel previsionale.',
   expenses:
-    'Spese macroscopiche registrate per capire il margine operativo. Nel forfettario non vengono dedotte analiticamente dal calcolo fiscale.',
+    'Spese pagate registrate per capire il margine operativo. Le spese da pagare restano nel previsionale.',
   margin:
     'Differenza tra introiti e spese registrate, prima di considerare gli accantonamenti fiscali e previdenziali.',
   taxableCoefficient:
@@ -126,7 +145,7 @@ const helpText = {
   pensionRate:
     'Contributo previdenziale soggettivo calcolato sul reddito professionale forfettario.',
   pensionMinimum:
-    'Importo minimo annuo dovuto anche quando il calcolo percentuale risulta piu basso.',
+    'Importo minimo annuo dovuto anche quando il calcolo percentuale risulta piu basso. ENPAP ordinario: 856 euro; ridotto neoiscritti: 286 euro.',
   integrativeRate:
     'Contributo integrativo calcolato sul fatturato lordo. Di solito viene esposto in fattura come rivalsa.',
   integrativeMinimum:
@@ -147,6 +166,9 @@ function App() {
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [movementType, setMovementType] = useState<MovementType>('income')
   const [toast, setToast] = useState<Toast | null>(null)
+  const [editingMovementId, setEditingMovementId] = useState<string | null>(null)
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
   const [movementForm, setMovementForm] = useState({
     date: today,
@@ -215,12 +237,11 @@ function App() {
     [annualMovements, profile],
   )
   const expenseTotal = fiscalEstimate.expenses
-  const operationalMargin = fiscalEstimate.grossIncome - expenseTotal
 
-  function notify(message: string) {
+  function notify(message: string, action?: Pick<Toast, 'actionLabel' | 'onAction'>) {
     const id = Date.now()
 
-    setToast({ id, message })
+    setToast({ id, message, ...action })
     window.setTimeout(() => {
       setToast((current) => (current?.id === id ? null : current))
     }, 2800)
@@ -246,10 +267,41 @@ function App() {
     }))
   }
 
+  function openNewMovement() {
+    selectView('movements')
+    setEditingMovementId(null)
+    setMovementType('income')
+    setMovementForm({
+      date: today,
+      description: '',
+      category: 'Sedute',
+      amount: '',
+      status: 'collected',
+      notes: '',
+    })
+    setDrawerOpen(true)
+  }
+
+  function editMovement(movement: Movement) {
+    selectView('movements')
+    setEditingMovementId(movement.id ?? null)
+    setMovementType(movement.type)
+    setMovementForm({
+      date: movement.date,
+      description: movement.description,
+      category: movement.category,
+      amount: String(movement.amount),
+      status: movement.status,
+      notes: movement.notes ?? '',
+    })
+    setDrawerOpen(true)
+  }
+
   async function submitMovement(event: FormEvent) {
     event.preventDefault()
 
-    await addMovement({
+    const nextMovement: Movement = {
+      id: editingMovementId ?? undefined,
       date: movementForm.date,
       type: movementType,
       description:
@@ -259,7 +311,13 @@ function App() {
       amount: Number(movementForm.amount),
       status: movementForm.status,
       notes: movementForm.notes,
-    })
+    }
+
+    if (editingMovementId) {
+      await db.movements.put(nextMovement)
+    } else {
+      await addMovement(nextMovement)
+    }
 
     setMovementForm({
       ...movementForm,
@@ -267,21 +325,63 @@ function App() {
       amount: '',
       notes: '',
     })
+    setEditingMovementId(null)
     setDrawerOpen(false)
-    notify('Movimento salvato.')
+    notify(editingMovementId ? 'Movimento aggiornato.' : 'Movimento salvato.')
   }
 
   async function submitGoal(event: FormEvent) {
     event.preventDefault()
 
-    await addGoal({
+    const nextGoal: Goal = {
+      id: editingGoalId ?? undefined,
       name: goalForm.name || 'Obiettivo',
       targetAmount: Number(goalForm.targetAmount),
       savedAmount: Number(goalForm.savedAmount),
       targetDate: goalForm.targetDate,
-    })
+    }
+
+    if (editingGoalId) {
+      await db.goals.put(nextGoal)
+    } else {
+      await addGoal(nextGoal)
+    }
+
     setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
-    notify('Obiettivo creato.')
+    setEditingGoalId(null)
+    notify(editingGoalId ? 'Obiettivo aggiornato.' : 'Obiettivo creato.')
+  }
+
+  function editGoal(goal: Goal) {
+    setEditingGoalId(goal.id ?? null)
+    setGoalForm({
+      name: goal.name,
+      targetAmount: String(goal.targetAmount),
+      savedAmount: String(goal.savedAmount),
+      targetDate: goal.targetDate,
+    })
+    selectView('goals')
+  }
+
+  async function removeGoal(id?: string) {
+    if (!id) {
+      return
+    }
+
+    const goal = goals.find((item) => item.id === id)
+
+    await deleteRecord('goals', id)
+    notify(
+      'Obiettivo eliminato.',
+      goal
+        ? {
+            actionLabel: 'Ripristina',
+            onAction: () => {
+              db.goals.put(goal).then(() => notify('Obiettivo ripristinato.'))
+            },
+          }
+        : undefined,
+    )
   }
 
   async function updateProfile(field: keyof TaxProfile, value: string) {
@@ -296,8 +396,20 @@ function App() {
       return
     }
 
+    const movement = movements.find((item) => item.id === id)
+
     await deleteRecord('movements', id)
-    notify('Movimento eliminato.')
+    notify(
+      'Movimento eliminato.',
+      movement
+        ? {
+            actionLabel: 'Ripristina',
+            onAction: () => {
+              db.movements.put(movement).then(() => notify('Movimento ripristinato.'))
+            },
+          }
+        : undefined,
+    )
   }
 
   async function handleExport() {
@@ -310,17 +422,10 @@ function App() {
       return
     }
 
-    const confirmed = window.confirm(
-      'Importare questo backup? I movimenti e gli obiettivi locali verranno sostituiti.',
-    )
-
-    if (!confirmed) {
-      return
-    }
-
     try {
-      await importBackup(JSON.parse(await file.text()))
-      notify('Backup importato.')
+      const payload = parseBackupPayload(JSON.parse(await file.text()))
+
+      setPendingImport({ fileName: file.name, payload })
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Import non riuscito.')
     } finally {
@@ -328,6 +433,16 @@ function App() {
         backupInputRef.current.value = ''
       }
     }
+  }
+
+  async function confirmImport() {
+    if (!pendingImport) {
+      return
+    }
+
+    await importBackup(pendingImport.payload)
+    setPendingImport(null)
+    notify('Backup importato.')
   }
 
   if (!appData) {
@@ -449,7 +564,6 @@ function App() {
           <SummaryStrip
             estimate={fiscalEstimate}
             expenseTotal={expenseTotal}
-            operationalMargin={operationalMargin}
           />
         ) : null}
 
@@ -460,7 +574,7 @@ function App() {
                 movements={annualMovements}
                 goals={goals}
                 estimate={fiscalEstimate}
-                onGoToMovements={() => selectView('movements')}
+                onGoToMovements={openNewMovement}
                 onGoToReserves={() => selectView('reserves')}
                 onGoToGoals={() => selectView('goals')}
                 onGoToProfile={() => selectView('profile')}
@@ -470,7 +584,8 @@ function App() {
               <MovementsView
                 movements={annualMovements}
                 onDelete={removeMovement}
-                onNew={() => setDrawerOpen(true)}
+                onEdit={editMovement}
+                onNew={openNewMovement}
                 onExport={handleExport}
                 onImport={() => backupInputRef.current?.click()}
               />
@@ -484,6 +599,18 @@ function App() {
                 profile={profile}
                 goalForm={goalForm}
                 setGoalForm={setGoalForm}
+                editingGoalId={editingGoalId}
+                onCancelEdit={() => {
+                  setEditingGoalId(null)
+                  setGoalForm({
+                    name: '',
+                    targetAmount: '',
+                    savedAmount: '',
+                    targetDate: today,
+                  })
+                }}
+                onEditGoal={editGoal}
+                onDeleteGoal={removeGoal}
                 onSubmitGoal={submitGoal}
               />
             ) : null}
@@ -509,9 +636,13 @@ function App() {
             <MovementDrawer
               movementType={movementType}
               movementForm={movementForm}
+              isEditing={Boolean(editingMovementId)}
               setMovementForm={setMovementForm}
               setType={setType}
-              onClose={() => setDrawerOpen(false)}
+              onClose={() => {
+                setDrawerOpen(false)
+                setEditingMovementId(null)
+              }}
               onSubmit={submitMovement}
             />
           ) : null}
@@ -528,7 +659,23 @@ function App() {
         </footer>
       </section>
 
-      {toast ? <div className="toast">{toast.message}</div> : null}
+      {toast ? (
+        <div className="toast" role="status" aria-live="polite">
+          <span>{toast.message}</span>
+          {toast.onAction && toast.actionLabel ? (
+            <button type="button" onClick={toast.onAction}>
+              {toast.actionLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {pendingImport ? (
+        <ImportPreviewDialog
+          pendingImport={pendingImport}
+          onCancel={() => setPendingImport(null)}
+          onConfirm={confirmImport}
+        />
+      ) : null}
     </main>
   )
 }
@@ -536,48 +683,109 @@ function App() {
 function SummaryStrip({
   estimate,
   expenseTotal,
-  operationalMargin,
 }: {
   estimate: FiscalEstimate
   expenseTotal: number
-  operationalMargin: number
 }) {
   return (
     <section className="summary-strip" aria-label="Sintesi fondi">
       <SummaryItem
         label="Disponibile"
         value={formatCurrency(estimate.availableAfterReserve)}
-        detail="Dopo spese e accantonamenti"
+        detail="Cassa reale stimata"
         tone="positive"
         help={helpText.available}
       />
       <SummaryItem
+        label="Previsionale"
+        value={formatCurrency(estimate.projectedAvailableAfterReserve)}
+        detail={`${formatCurrency(estimate.projectedIncome)} da incassare`}
+        tone="positive"
+        help={helpText.projectedAvailable}
+      />
+      <SummaryItem
         label="Da accantonare"
         value={formatCurrency(estimate.totalReserve)}
-        detail={`${formatPercent(estimate.effectiveReserveRate)} degli introiti`}
+        detail={`${formatPercent(estimate.effectiveReserveRate)} degli incassi`}
         tone="warning"
         help={helpText.reserve}
       />
       <SummaryItem
-        label="Introiti"
+        label="Incassato"
         value={formatCurrency(estimate.grossIncome)}
-        detail="Totale lordo"
+        detail="Totale lordo reale"
         help={helpText.grossIncome}
       />
       <SummaryItem
-        label="Spese"
+        label="Pagato"
         value={formatCurrency(expenseTotal)}
-        detail="Totale macroscopiche"
+        detail={`${formatCurrency(estimate.projectedExpenses)} da pagare`}
         help={helpText.expenses}
       />
-      <SummaryItem
-        label="Margine operativo"
-        value={formatCurrency(operationalMargin)}
-        detail="Introiti - Spese"
-        tone="positive"
-        help={helpText.margin}
-      />
     </section>
+  )
+}
+
+function ImportPreviewDialog({
+  pendingImport,
+  onCancel,
+  onConfirm,
+}: {
+  pendingImport: PendingImport
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const { payload } = pendingImport
+  const years = getAvailableYears(payload.movements, currentYear).join(', ')
+  const exportedAt = formatDate(payload.meta.exportedAt.slice(0, 10))
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section
+        className="import-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-preview-title"
+      >
+        <div className="section-header">
+          <div>
+            <h2 id="import-preview-title">Anteprima import</h2>
+            <span>{pendingImport.fileName}</span>
+          </div>
+        </div>
+        <dl className="import-summary">
+          <div>
+            <dt>Movimenti</dt>
+            <dd>{payload.movements.length}</dd>
+          </div>
+          <div>
+            <dt>Obiettivi</dt>
+            <dd>{payload.goals.length}</dd>
+          </div>
+          <div>
+            <dt>Anni inclusi</dt>
+            <dd>{years}</dd>
+          </div>
+          <div>
+            <dt>Esportato il</dt>
+            <dd>{exportedAt}</dd>
+          </div>
+        </dl>
+        <p className="section-note">
+          Confermando, movimenti e obiettivi locali verranno sostituiti con il
+          contenuto di questo backup. Il profilo fiscale verrà aggiornato con
+          quello del file.
+        </p>
+        <div className="dialog-actions">
+          <button className="outline-button" type="button" onClick={onCancel}>
+            Annulla
+          </button>
+          <button className="primary-button" type="button" onClick={onConfirm}>
+            Importa backup
+          </button>
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -659,6 +867,10 @@ function SetupView({
               onChange={(value) => updateField('integrativeMinimum', value)}
             />
           </div>
+          <MinimumPresetControl
+            value={setupProfile.pensionMinimum}
+            onChange={(value) => updateField('pensionMinimum', value)}
+          />
 
           <div className="setup-next">
             <strong>Dopo questo passaggio:</strong>
@@ -806,6 +1018,7 @@ function FirstRunGuide({
 function MovementsView({
   movements,
   onDelete,
+  onEdit,
   onNew,
   onExport,
   onImport,
@@ -813,6 +1026,7 @@ function MovementsView({
 }: {
   movements: Movement[]
   onDelete: (id?: string) => void
+  onEdit: (movement: Movement) => void
   onNew: () => void
   onExport?: () => void
   onImport?: () => void
@@ -844,7 +1058,12 @@ function MovementsView({
           </div>
         }
       />
-      <MovementTable movements={movements} onDelete={onDelete} onNew={onNew} />
+      <MovementTable
+        movements={movements}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onNew={onNew}
+      />
     </section>
   )
 }
@@ -887,6 +1106,10 @@ function GoalsView({
   profile,
   goalForm,
   setGoalForm,
+  editingGoalId,
+  onCancelEdit,
+  onEditGoal,
+  onDeleteGoal,
   onSubmitGoal,
   compact = false,
 }: {
@@ -894,6 +1117,10 @@ function GoalsView({
   profile: TaxProfile
   goalForm: GoalFormState
   setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
+  editingGoalId: string | null
+  onCancelEdit: () => void
+  onEditGoal: (goal: Goal) => void
+  onDeleteGoal: (id?: string) => void
   onSubmitGoal: (event: FormEvent) => void
   compact?: boolean
 }) {
@@ -904,10 +1131,17 @@ function GoalsView({
         detail={compact ? 'Prossimi traguardi' : 'Risparmio e lordo necessario'}
         help={helpText.goals}
       />
-      <GoalRows goals={goals} profile={profile} />
+      <GoalRows
+        goals={goals}
+        profile={profile}
+        onEdit={onEditGoal}
+        onDelete={onDeleteGoal}
+      />
       <GoalForm
         goalForm={goalForm}
+        isEditing={Boolean(editingGoalId)}
         setGoalForm={setGoalForm}
+        onCancelEdit={onCancelEdit}
         onSubmit={onSubmitGoal}
       />
     </section>
@@ -1002,6 +1236,10 @@ function ProfileView({
           onChange={(value) => onChange('integrativeMinimum', String(value))}
         />
       </div>
+      <MinimumPresetControl
+        value={profile.pensionMinimum}
+        onChange={(value) => onChange('pensionMinimum', String(value))}
+      />
       <div className="profile-guide">
         <div>
           <strong>Configurazione guidata</strong>
@@ -1015,6 +1253,46 @@ function ProfileView({
         </button>
       </div>
     </section>
+  )
+}
+
+function MinimumPresetControl({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (value: number) => void
+}) {
+  const selected =
+    value === enpapMinimums.standard
+      ? 'standard'
+      : value === enpapMinimums.newMember
+        ? 'new-member'
+        : 'custom'
+
+  return (
+    <div className="minimum-presets" aria-label="Preset minimo soggettivo ENPAP">
+      <div>
+        <strong>Minimo soggettivo ENPAP</strong>
+        <span>Usa il minimo ordinario salvo diritto alla riduzione.</span>
+      </div>
+      <div className="preset-actions">
+        <button
+          className={selected === 'standard' ? 'selected' : ''}
+          type="button"
+          onClick={() => onChange(enpapMinimums.standard)}
+        >
+          Ordinario {formatCurrency(enpapMinimums.standard)}
+        </button>
+        <button
+          className={selected === 'new-member' ? 'selected' : ''}
+          type="button"
+          onClick={() => onChange(enpapMinimums.newMember)}
+        >
+          Neoiscritti {formatCurrency(enpapMinimums.newMember)}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1050,14 +1328,28 @@ function BackupView({
 }
 
 function DeadlinesView({ selectedYear }: { selectedYear: number }) {
+  const enpapAdvanceDate =
+    selectedYear === 2026 ? '02/03/2026' : `01/03/${selectedYear}`
+
   return (
     <section className="ledger-section deadlines-view">
       <SectionHeader title="Scadenze" detail="Promemoria operativo" />
       <div className="deadline-list">
-        <DeadlineRow date={`30/06/${selectedYear}`} title="Saldo e primo acconto" />
-        <DeadlineRow date={`30/11/${selectedYear}`} title="Secondo acconto" />
-        <DeadlineRow date={`01/10/${selectedYear}`} title="Comunicazione e saldo previdenziale" />
+        <DeadlineRow date={enpapAdvanceDate} title="ENPAP acconto contributi" />
+        <DeadlineRow
+          date={`30/06/${selectedYear}`}
+          title="Imposte: saldo e primo acconto"
+        />
+        <DeadlineRow
+          date={`01/10/${selectedYear}`}
+          title="ENPAP comunicazione reddituale e saldo"
+        />
+        <DeadlineRow date={`30/11/${selectedYear}`} title="Imposte: secondo acconto" />
       </div>
+      <p className="section-note">
+        Le scadenze fiscali possono slittare in caso di festivi o proroghe. Verifica
+        sempre con commercialista, Agenzia Entrate ed ENPAP prima del versamento.
+      </p>
     </section>
   )
 }
@@ -1065,6 +1357,7 @@ function DeadlinesView({ selectedYear }: { selectedYear: number }) {
 function MovementDrawer({
   movementType,
   movementForm,
+  isEditing,
   setMovementForm,
   setType,
   onClose,
@@ -1072,6 +1365,7 @@ function MovementDrawer({
 }: {
   movementType: MovementType
   movementForm: MovementFormState
+  isEditing: boolean
   setMovementForm: React.Dispatch<React.SetStateAction<MovementFormState>>
   setType: (type: MovementType) => void
   onClose: () => void
@@ -1080,7 +1374,7 @@ function MovementDrawer({
   return (
     <aside className="drawer" aria-label="Nuovo movimento">
       <div className="drawer-header">
-        <h2>Nuovo movimento</h2>
+        <h2>{isEditing ? 'Modifica movimento' : 'Nuovo movimento'}</h2>
         <button
           className="ghost-button"
           type="button"
@@ -1195,7 +1489,7 @@ function MovementDrawer({
         </Field>
         <div className="drawer-actions">
           <button className="primary-button" type="submit">
-            Salva
+            {isEditing ? 'Aggiorna' : 'Salva'}
           </button>
           <button className="outline-button" type="button" onClick={onClose}>
             Annulla
@@ -1248,15 +1542,64 @@ function SummaryItem({
 }
 
 function InfoTooltip({ text }: { text: string }) {
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const [position, setPosition] = useState({
+    left: 16,
+    top: 16,
+    arrowLeft: 16,
+    placement: 'top' as 'top' | 'bottom',
+  })
+
+  function updatePosition() {
+    const trigger = triggerRef.current
+
+    if (!trigger) {
+      return
+    }
+
+    const rect = trigger.getBoundingClientRect()
+    const width = Math.min(280, window.innerWidth - 32)
+    const left = Math.min(
+      window.innerWidth - width - 16,
+      Math.max(16, rect.left + rect.width / 2 - width / 2),
+    )
+    const placeBelow = rect.top < 86
+    const top = placeBelow ? rect.bottom + 10 : rect.top - 12
+
+    setPosition({
+      left,
+      top,
+      arrowLeft: rect.left + rect.width / 2 - left,
+      placement: placeBelow ? 'bottom' : 'top',
+    })
+  }
+
   return (
     <span
       className="info-tooltip"
+      ref={triggerRef}
       tabIndex={0}
       role="button"
       aria-label={text}
+      onFocus={updatePosition}
+      onMouseEnter={updatePosition}
     >
       <Info size={14} aria-hidden="true" />
-      <span className="tooltip-bubble" role="tooltip">
+      <span
+        className="tooltip-bubble"
+        role="tooltip"
+        style={
+          {
+            left: position.left,
+            top: position.top,
+            '--tooltip-arrow-left': `${position.arrowLeft}px`,
+            '--tooltip-offset': position.placement === 'top' ? '-100%' : '0',
+            '--tooltip-arrow-top': position.placement === 'top' ? '100%' : '-5px',
+            '--tooltip-arrow-rotate':
+              position.placement === 'top' ? '45deg' : '225deg',
+          } as CSSProperties
+        }
+      >
         {text}
       </span>
     </span>
@@ -1291,10 +1634,12 @@ function SectionHeader({
 function MovementTable({
   movements,
   onDelete,
+  onEdit,
   onNew,
 }: {
   movements: Movement[]
   onDelete: (id?: string) => void
+  onEdit: (movement: Movement) => void
   onNew?: () => void
 }) {
   if (movements.length === 0) {
@@ -1349,14 +1694,24 @@ function MovementTable({
                 <span className="status-chip">{statusLabel(movement.status)}</span>
               </td>
               <td>
-                <button
-                  className="row-action"
-                  type="button"
-                  aria-label={`Elimina ${movement.description}`}
-                  onClick={() => onDelete(movement.id)}
-                >
-                  <Trash2 size={15} />
-                </button>
+                <div className="row-actions">
+                  <button
+                    className="row-action"
+                    type="button"
+                    aria-label={`Modifica ${movement.description}`}
+                    onClick={() => onEdit(movement)}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    className="row-action"
+                    type="button"
+                    aria-label={`Elimina ${movement.description}`}
+                    onClick={() => onDelete(movement.id)}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -1407,9 +1762,13 @@ function ReserveRows({ estimate }: { estimate: FiscalEstimate }) {
 function GoalRows({
   goals,
   profile,
+  onEdit,
+  onDelete,
 }: {
   goals: Goal[]
   profile: TaxProfile
+  onEdit: (goal: Goal) => void
+  onDelete: (id?: string) => void
 }) {
   if (goals.length === 0) {
     return (
@@ -1459,9 +1818,24 @@ function GoalRows({
             <div className="goal-progress">
               <i style={{ width: `${plan.progress * 100}%` }} />
             </div>
-            <button className="row-action" type="button" aria-label="Menu obiettivo">
-              <MoreVertical size={16} />
-            </button>
+            <div className="row-actions">
+              <button
+                className="row-action"
+                type="button"
+                aria-label={`Modifica ${goal.name}`}
+                onClick={() => onEdit(goal)}
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                className="row-action"
+                type="button"
+                aria-label={`Elimina ${goal.name}`}
+                onClick={() => onDelete(goal.id)}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </article>
         )
       })}
@@ -1471,11 +1845,15 @@ function GoalRows({
 
 function GoalForm({
   goalForm,
+  isEditing,
   setGoalForm,
+  onCancelEdit,
   onSubmit,
 }: {
   goalForm: GoalFormState
+  isEditing: boolean
   setGoalForm: React.Dispatch<React.SetStateAction<GoalFormState>>
+  onCancelEdit: () => void
   onSubmit: (event: FormEvent) => void
 }) {
   return (
@@ -1508,8 +1886,13 @@ function GoalForm({
         }
       />
       <button className="text-button" type="submit">
-        Salva obiettivo
+        {isEditing ? 'Aggiorna obiettivo' : 'Salva obiettivo'}
       </button>
+      {isEditing ? (
+        <button className="outline-button" type="button" onClick={onCancelEdit}>
+          Annulla
+        </button>
+      ) : null}
     </form>
   )
 }
