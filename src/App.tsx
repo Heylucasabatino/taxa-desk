@@ -311,20 +311,69 @@ function App() {
       onSetYear={(year) => setSelectedYear(clampYear(year))}
       onExport={handleExport}
       onImportFile={handleImport}
-      modals={pendingImport ? (
-        <ImportPreviewDialog pendingImport={pendingImport} onCancel={() => setPendingImport(null)} onConfirm={confirmImport} />
-      ) : null}
+      modals={
+        pendingImport ? (
+          <ImportPreviewDialog
+            pendingImport={pendingImport}
+            onCancel={() => setPendingImport(null)}
+            onConfirm={confirmImport}
+          />
+        ) : null
+      }
     >
         {activeView !== 'profile' && activeView !== 'backup' && annualMovements.length > 0 ? (
           <SummaryStrip estimate={fiscalEstimate} expenseTotal={fiscalEstimate.expenses} />
         ) : null}
 
-        <ViewSwitch activeView={activeView} annualMovements={annualMovements} goals={goals} profile={profile} categories={categories} theme={theme} fiscalEstimate={fiscalEstimate} selectedYear={selectedYear} drawerOpen={drawerOpen} movementType={movementType} movementForm={movementForm} movementErrors={movementErrors} goalForm={goalForm} goalErrors={goalErrors} editingMovementId={editingMovementId} editingGoalId={editingGoalId} setMovementForm={setMovementForm} setGoalForm={setGoalForm} setType={setType} setDrawerOpen={setDrawerOpen} setEditingMovementId={setEditingMovementId} setMovementErrors={setMovementErrors} onSelectView={selectView} onNewMovement={openNewMovement} onEditMovement={editMovement} onDeleteMovement={removeMovement} onSubmitMovement={submitMovement} onSubmitGoal={submitGoal} onCancelGoalEdit={() => {
-          setEditingGoalId(null)
-          setGoalErrors({})
-          setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
-        }} onEditGoal={editGoal} onDeleteGoal={removeGoal} onExport={handleExport} onImport={() => backupInputRef.current?.click()} onProfileChange={updateProfile} onCreateCategory={createCategory} onDeleteCategory={removeCategory} onThemeChange={setTheme} onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })} />
-
+        <ViewSwitch
+          activeView={activeView}
+          annualMovements={annualMovements}
+          goals={goals}
+          profile={profile}
+          categories={categories}
+          theme={theme}
+          fiscalEstimate={fiscalEstimate}
+          selectedYear={selectedYear}
+          drawerOpen={drawerOpen}
+          movementType={movementType}
+          movementForm={movementForm}
+          movementErrors={movementErrors}
+          goalForm={goalForm}
+          goalErrors={goalErrors}
+          editingMovementId={editingMovementId}
+          editingGoalId={editingGoalId}
+          setMovementForm={setMovementForm}
+          setGoalForm={setGoalForm}
+          setType={setType}
+          setDrawerOpen={setDrawerOpen}
+          setEditingMovementId={setEditingMovementId}
+          setMovementErrors={setMovementErrors}
+          onSelectView={selectView}
+          onNewMovement={openNewMovement}
+          onEditMovement={editMovement}
+          onDeleteMovement={removeMovement}
+          onSubmitMovement={submitMovement}
+          onSubmitGoal={submitGoal}
+          onCancelGoalEdit={() => {
+            setEditingGoalId(null)
+            setGoalErrors({})
+            setGoalForm({
+              name: '',
+              targetAmount: '',
+              savedAmount: '',
+              targetDate: today,
+            })
+          }}
+          onEditGoal={editGoal}
+          onDeleteGoal={removeGoal}
+          onExport={handleExport}
+          onImport={() => backupInputRef.current?.click()}
+          onProfileChange={updateProfile}
+          onCreateCategory={createCategory}
+          onDeleteCategory={removeCategory}
+          onThemeChange={setTheme}
+          onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })}
+        />
     </AppFrame>
   )
 }

@@ -32,6 +32,9 @@ export function MovementTable({
   const [statusFilter, setStatusFilter] = useState<'all' | MovementStatus>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [sort, setSort] = useState<SortState>({ key: 'date', direction: 'desc' })
+  const filteredCategories = typeFilter === 'all'
+    ? categories
+    : categories.filter((category) => category.type === typeFilter)
   const visibleMovements = useMemo(() => movements
     .filter((movement) => movement.description.toLowerCase().includes(query.trim().toLowerCase()))
     .filter((movement) => typeFilter === 'all' || movement.type === typeFilter)
@@ -58,7 +61,10 @@ export function MovementTable({
     <>
     <div className="movement-filters">
       <input value={query} placeholder="Cerca descrizione" onChange={(event) => setQuery(event.target.value)} />
-      <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as 'all' | MovementType)}>
+      <select value={typeFilter} onChange={(event) => {
+        setTypeFilter(event.target.value as 'all' | MovementType)
+        setCategoryFilter('all')
+      }}>
         <option value="all">Tutti i tipi</option>
         <option value="income">Introiti</option>
         <option value="expense">Spese</option>
@@ -69,7 +75,11 @@ export function MovementTable({
       </select>
       <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
         <option value="all">Tutte le categorie</option>
-        {categories.map((category) => <option key={category.id ?? category.name}>{category.name}</option>)}
+        {filteredCategories.map((category) => (
+          <option key={category.id ?? category.name} value={category.name}>
+            {category.name}
+          </option>
+        ))}
       </select>
     </div>
     <div className="table-wrap">
