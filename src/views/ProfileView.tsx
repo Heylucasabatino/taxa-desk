@@ -6,21 +6,26 @@ import { CurrencyField } from '../components/fields/CurrencyField'
 import { PercentSetting } from '../components/fields/PercentSetting'
 import { categoriesByType, type Category } from '../constants/categories'
 import { helpText } from '../constants/helpText'
+import type { ThemePreference } from '../hooks/useTheme'
 import type { MovementType, TaxProfile } from '../lib/finance'
 
 export function ProfileView({
   profile,
   categories,
+  theme,
   onChange,
   onCreateCategory,
   onDeleteCategory,
+  onThemeChange,
   onRestartSetup,
 }: {
   profile: TaxProfile
   categories: Category[]
+  theme: ThemePreference
   onChange: (field: keyof TaxProfile, value: string | boolean) => void
   onCreateCategory: (type: MovementType, name: string) => void
   onDeleteCategory: (id?: string) => void
+  onThemeChange: (theme: ThemePreference) => void
   onRestartSetup: () => void
 }) {
   const [categoryName, setCategoryName] = useState('')
@@ -85,6 +90,19 @@ export function ProfileView({
           <small>Disattivalo solo se vuoi una stima prudenziale meno vincolante a inizio anno.</small>
         </span>
       </label>
+      <div className="profile-panel">
+        <h3>Aspetto</h3>
+        <div className="profile-grid">
+          <label className="field">
+            <span className="field-label">Tema</span>
+            <select value={theme} onChange={(event) => onThemeChange(event.target.value as ThemePreference)}>
+              <option value="system">Sistema</option>
+              <option value="light">Chiaro</option>
+              <option value="dark">Scuro</option>
+            </select>
+          </label>
+        </div>
+      </div>
       <div className="profile-panel">
         <h3>Categorie</h3>
         <form className="category-form" onSubmit={(event) => {

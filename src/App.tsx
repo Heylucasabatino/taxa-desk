@@ -7,6 +7,7 @@ import { SummaryStrip } from './components/SummaryStrip'
 import { ViewSwitch } from './components/ViewSwitch'
 import { useAppData } from './hooks/useAppData'
 import { useHashView } from './hooks/useHashView'
+import { useTheme } from './hooks/useTheme'
 import { useToast } from './hooks/useToast'
 import {
   addGoal,
@@ -53,6 +54,7 @@ function App() {
   const [goalErrors, setGoalErrors] = useState<Partial<Record<keyof GoalFormState, string>>>({})
   const backupInputRef = useRef<HTMLInputElement>(null)
   const { toast, notify } = useToast()
+  const { theme, setTheme } = useTheme()
   const { appData, movements, goals, profile, categories } = useAppData(notify)
   const handleViewChange = useCallback((view: ActiveView) => {
     setDrawerOpen(view === 'movements')
@@ -317,11 +319,11 @@ function App() {
           <SummaryStrip estimate={fiscalEstimate} expenseTotal={fiscalEstimate.expenses} />
         ) : null}
 
-        <ViewSwitch activeView={activeView} annualMovements={annualMovements} goals={goals} profile={profile} categories={categories} fiscalEstimate={fiscalEstimate} selectedYear={selectedYear} drawerOpen={drawerOpen} movementType={movementType} movementForm={movementForm} movementErrors={movementErrors} goalForm={goalForm} goalErrors={goalErrors} editingMovementId={editingMovementId} editingGoalId={editingGoalId} setMovementForm={setMovementForm} setGoalForm={setGoalForm} setType={setType} setDrawerOpen={setDrawerOpen} setEditingMovementId={setEditingMovementId} setMovementErrors={setMovementErrors} onSelectView={selectView} onNewMovement={openNewMovement} onEditMovement={editMovement} onDeleteMovement={removeMovement} onSubmitMovement={submitMovement} onSubmitGoal={submitGoal} onCancelGoalEdit={() => {
+        <ViewSwitch activeView={activeView} annualMovements={annualMovements} goals={goals} profile={profile} categories={categories} theme={theme} fiscalEstimate={fiscalEstimate} selectedYear={selectedYear} drawerOpen={drawerOpen} movementType={movementType} movementForm={movementForm} movementErrors={movementErrors} goalForm={goalForm} goalErrors={goalErrors} editingMovementId={editingMovementId} editingGoalId={editingGoalId} setMovementForm={setMovementForm} setGoalForm={setGoalForm} setType={setType} setDrawerOpen={setDrawerOpen} setEditingMovementId={setEditingMovementId} setMovementErrors={setMovementErrors} onSelectView={selectView} onNewMovement={openNewMovement} onEditMovement={editMovement} onDeleteMovement={removeMovement} onSubmitMovement={submitMovement} onSubmitGoal={submitGoal} onCancelGoalEdit={() => {
           setEditingGoalId(null)
           setGoalErrors({})
           setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
-        }} onEditGoal={editGoal} onDeleteGoal={removeGoal} onExport={handleExport} onImport={() => backupInputRef.current?.click()} onProfileChange={updateProfile} onCreateCategory={createCategory} onDeleteCategory={removeCategory} onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })} />
+        }} onEditGoal={editGoal} onDeleteGoal={removeGoal} onExport={handleExport} onImport={() => backupInputRef.current?.click()} onProfileChange={updateProfile} onCreateCategory={createCategory} onDeleteCategory={removeCategory} onThemeChange={setTheme} onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })} />
 
     </AppFrame>
   )

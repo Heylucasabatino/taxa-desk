@@ -1,5 +1,6 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { Category } from '../constants/categories'
+import type { ThemePreference } from '../hooks/useTheme'
 import type { ActiveView } from '../lib/routing'
 import type { FiscalEstimate, Goal, Movement, MovementType, TaxProfile } from '../lib/finance'
 import { AnalyticsView } from '../views/AnalyticsView'
@@ -19,6 +20,7 @@ export function ViewSwitch({
   goals,
   profile,
   categories,
+  theme,
   fiscalEstimate,
   selectedYear,
   drawerOpen,
@@ -49,6 +51,7 @@ export function ViewSwitch({
   onProfileChange,
   onCreateCategory,
   onDeleteCategory,
+  onThemeChange,
   onRestartSetup,
 }: {
   activeView: ActiveView
@@ -56,6 +59,7 @@ export function ViewSwitch({
   goals: Goal[]
   profile: TaxProfile
   categories: Category[]
+  theme: ThemePreference
   fiscalEstimate: FiscalEstimate
   selectedYear: number
   drawerOpen: boolean
@@ -86,6 +90,7 @@ export function ViewSwitch({
   onProfileChange: (field: keyof TaxProfile, value: string | boolean) => void
   onCreateCategory: (type: MovementType, name: string) => void
   onDeleteCategory: (id?: string) => void
+  onThemeChange: (theme: ThemePreference) => void
   onRestartSetup: () => void
 }) {
   return (
@@ -97,7 +102,7 @@ export function ViewSwitch({
         {activeView === 'goals' ? <GoalsView goals={goals} profile={profile} goalForm={goalForm} goalErrors={goalErrors} setGoalForm={setGoalForm} editingGoalId={editingGoalId} onCancelEdit={onCancelGoalEdit} onEditGoal={onEditGoal} onDeleteGoal={onDeleteGoal} onSubmitGoal={onSubmitGoal} /> : null}
         {activeView === 'deadlines' ? <DeadlinesView selectedYear={selectedYear} /> : null}
         {activeView === 'analytics' ? <AnalyticsView movements={annualMovements} /> : null}
-        {activeView === 'profile' ? <ProfileView profile={profile} categories={categories} onChange={onProfileChange} onCreateCategory={onCreateCategory} onDeleteCategory={onDeleteCategory} onRestartSetup={onRestartSetup} /> : null}
+        {activeView === 'profile' ? <ProfileView profile={profile} categories={categories} theme={theme} onChange={onProfileChange} onCreateCategory={onCreateCategory} onDeleteCategory={onDeleteCategory} onThemeChange={onThemeChange} onRestartSetup={onRestartSetup} /> : null}
         {activeView === 'backup' ? <BackupView onExport={onExport} onImport={onImport} /> : null}
       </section>
       {activeView === 'movements' && drawerOpen ? (

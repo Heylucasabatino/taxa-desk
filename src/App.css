@@ -234,6 +234,10 @@
   box-shadow: 1px 0 0 var(--border);
 }
 
+:root[data-theme='dark'] .sidebar {
+  background: linear-gradient(180deg, #0d1a18, #0a1514);
+}
+
 .sidebar-head {
   display: grid;
   align-items: center;
@@ -350,6 +354,10 @@
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(12px);
   box-shadow: 0 1px 0 var(--border);
+}
+
+:root[data-theme='dark'] .topbar {
+  background: rgba(10, 23, 21, 0.9);
 }
 
 .topbar h1 {
