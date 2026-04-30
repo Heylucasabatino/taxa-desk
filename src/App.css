@@ -1127,6 +1127,31 @@ textarea:focus {
   padding: 18px;
 }
 
+.toggle-row {
+  max-width: 760px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.toggle-row input {
+  width: auto;
+  min-height: 0;
+  margin-top: 3px;
+}
+
+.toggle-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.toggle-row small {
+  color: var(--muted);
+}
+
 .analysis-panel:nth-child(2) {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(251, 247, 242, 0.66));

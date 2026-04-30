@@ -11,7 +11,7 @@ export function ProfileView({
   onRestartSetup,
 }: {
   profile: TaxProfile
-  onChange: (field: keyof TaxProfile, value: string) => void
+  onChange: (field: keyof TaxProfile, value: string | boolean) => void
   onRestartSetup: () => void
 }) {
   return (
@@ -62,6 +62,17 @@ export function ProfileView({
         value={profile.pensionMinimum}
         onChange={(value) => onChange('pensionMinimum', String(value))}
       />
+      <label className="toggle-row">
+        <input
+          type="checkbox"
+          checked={profile.enforceMinimumsWhenEmpty ?? true}
+          onChange={(event) => onChange('enforceMinimumsWhenEmpty', event.target.checked)}
+        />
+        <span>
+          <strong>Applica minimi ENPAP anche senza incassi</strong>
+          <small>Disattivalo solo se vuoi una stima prudenziale meno vincolante a inizio anno.</small>
+        </span>
+      </label>
       <div className="profile-guide">
         <div>
           <strong>Configurazione guidata</strong>

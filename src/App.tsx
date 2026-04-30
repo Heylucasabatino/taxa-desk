@@ -82,8 +82,8 @@ function App() {
     [movements, selectedYear],
   )
   const fiscalEstimate = useMemo(
-    () => estimateFiscalPosition(annualMovements, profile),
-    [annualMovements, profile],
+    () => estimateFiscalPosition(annualMovements, profile, selectedYear),
+    [annualMovements, profile, selectedYear],
   )
 
   function setType(type: MovementType) {

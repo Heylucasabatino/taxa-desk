@@ -7,6 +7,7 @@ export type TaxProfile = {
   integrativeMinimum: number
   activityYear: number
   setupCompleted?: boolean
+  enforceMinimumsWhenEmpty?: boolean
 }
 
 export type Income = {
@@ -84,6 +85,7 @@ export const defaultTaxProfile: TaxProfile = {
   integrativeMinimum: enpapMinimums.integrative,
   activityYear: 2,
   setupCompleted: false,
+  enforceMinimumsWhenEmpty: true,
 }
 
 export function sumAmounts<T extends { amount: number }>(items: T[]) {
@@ -93,6 +95,7 @@ export function sumAmounts<T extends { amount: number }>(items: T[]) {
 export function estimateFiscalPosition(
   movements: Movement[],
   profile: TaxProfile,
+  selectedYear = new Date().getFullYear(),
 ): FiscalEstimate {
   const incomes = movements.filter(
     (movement) => movement.type === 'income' && movement.status === 'collected',
@@ -114,24 +117,30 @@ export function estimateFiscalPosition(
   const forecastExpenses = expenseTotal + projectedExpenseTotal
   const taxableRevenue = grossIncome * profile.taxableCoefficient
   const forecastTaxableRevenue = forecastGrossIncome * profile.taxableCoefficient
-  const pensionDue = grossIncome > 0
-    ? Math.max(taxableRevenue * profile.pensionRate, profile.pensionMinimum)
-    : 0
-  const integrativeDue = grossIncome > 0
-    ? Math.max(grossIncome * profile.integrativeRate, profile.integrativeMinimum)
-    : 0
+  const shouldEnforceMinimums =
+    (profile.enforceMinimumsWhenEmpty ?? true) && selectedYear <= new Date().getFullYear()
+  const pensionDue =
+    grossIncome > 0 || shouldEnforceMinimums
+      ? Math.max(taxableRevenue * profile.pensionRate, profile.pensionMinimum)
+      : 0
+  const integrativeDue =
+    grossIncome > 0 || shouldEnforceMinimums
+      ? Math.max(grossIncome * profile.integrativeRate, profile.integrativeMinimum)
+      : 0
   const substituteTaxDue = Math.max(
     0,
     (taxableRevenue - pensionDue) * profile.substituteTaxRate,
   )
   const totalReserve = pensionDue + integrativeDue + substituteTaxDue
   const availableAfterReserve = grossIncome - expenseTotal - totalReserve
-  const forecastPensionDue = forecastGrossIncome > 0
-    ? Math.max(forecastTaxableRevenue * profile.pensionRate, profile.pensionMinimum)
-    : 0
-  const forecastIntegrativeDue = forecastGrossIncome > 0
-    ? Math.max(forecastGrossIncome * profile.integrativeRate, profile.integrativeMinimum)
-    : 0
+  const forecastPensionDue =
+    forecastGrossIncome > 0 || shouldEnforceMinimums
+      ? Math.max(forecastTaxableRevenue * profile.pensionRate, profile.pensionMinimum)
+      : 0
+  const forecastIntegrativeDue =
+    forecastGrossIncome > 0 || shouldEnforceMinimums
+      ? Math.max(forecastGrossIncome * profile.integrativeRate, profile.integrativeMinimum)
+      : 0
   const forecastSubstituteTaxDue = Math.max(
     0,
     (forecastTaxableRevenue - forecastPensionDue) * profile.substituteTaxRate,
