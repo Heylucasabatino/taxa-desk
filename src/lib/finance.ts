@@ -232,13 +232,16 @@ export function estimateGoalPlan(goal: Goal, profile: TaxProfile) {
   }
 }
 
-export function formatCurrency(value: number) {
+export function formatCurrency(value: number, compact = false) {
+  const numericValue = value || 0
+  const isInteger = Number.isInteger(numericValue)
+
   return new Intl.NumberFormat('it-IT', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: compact && isInteger ? 0 : 2,
     maximumFractionDigits: 2,
-  }).format(value || 0)
+  }).format(numericValue)
 }
 
 export function formatPercent(value: number) {

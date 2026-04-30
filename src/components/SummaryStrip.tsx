@@ -13,35 +13,35 @@ export function SummaryStrip({
     <section className="summary-strip" aria-label="Sintesi fondi">
       <SummaryItem
         label="Disponibile"
-        value={formatCurrency(estimate.availableAfterReserve)}
+        value={formatCurrency(estimate.availableAfterReserve, true)}
         detail="Cassa reale stimata"
         tone="positive"
         help={helpText.available}
       />
       <SummaryItem
         label="Previsionale"
-        value={formatCurrency(estimate.projectedAvailableAfterReserve)}
-        detail={`${formatCurrency(estimate.projectedIncome)} da incassare`}
+        value={formatCurrency(estimate.projectedAvailableAfterReserve, true)}
+        detail={`${formatCurrency(estimate.projectedIncome, true)} da incassare`}
         tone="positive"
         help={helpText.projectedAvailable}
       />
       <SummaryItem
         label="Da accantonare"
-        value={formatCurrency(estimate.totalReserve)}
+        value={formatCurrency(estimate.totalReserve, true)}
         detail={`${formatPercent(estimate.effectiveReserveRate)} degli incassi`}
         tone="warning"
         help={helpText.reserve}
       />
       <SummaryItem
         label="Incassato"
-        value={formatCurrency(estimate.grossIncome)}
+        value={formatCurrency(estimate.grossIncome, true)}
         detail="Totale lordo reale"
         help={helpText.grossIncome}
       />
       <SummaryItem
         label="Pagato"
-        value={formatCurrency(expenseTotal)}
-        detail={`${formatCurrency(estimate.projectedExpenses)} da pagare`}
+        value={formatCurrency(expenseTotal, true)}
+        detail={`${formatCurrency(estimate.projectedExpenses, true)} da pagare`}
         help={helpText.expenses}
       />
     </section>

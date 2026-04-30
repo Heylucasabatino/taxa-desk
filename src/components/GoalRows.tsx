@@ -44,15 +44,15 @@ export function GoalRows({
             <dl>
               <div>
                 <dt>Target</dt>
-                <dd>{formatCurrency(goal.targetAmount)}</dd>
+                <dd>{formatCurrency(goal.targetAmount, true)}</dd>
               </div>
               <div>
                 <dt>Accantonato</dt>
-                <dd>{formatCurrency(goal.savedAmount)}</dd>
+                <dd>{formatCurrency(goal.savedAmount, true)}</dd>
               </div>
               <div>
                 <dt>Manca</dt>
-                <dd className="amount-expense">{formatCurrency(plan.remaining)}</dd>
+                <dd className="amount-expense">{formatCurrency(plan.remaining, true)}</dd>
               </div>
               <div>
                 <dt>Scadenza</dt>
@@ -60,7 +60,7 @@ export function GoalRows({
               </div>
               <div>
                 <dt>Rata netta</dt>
-                <dd>{formatCurrency(plan.monthlyNet)} / mese</dd>
+                <dd>{formatCurrency(plan.monthlyNet, true)} / mese</dd>
               </div>
             </dl>
             <div className="goal-progress">
