@@ -1,48 +1,25 @@
 import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
 import './App.css'
+import { AppContent } from './components/AppContent'
 import { AppFrame } from './components/AppFrame'
 import { ImportPreviewDialog, type PendingImport } from './components/ImportPreviewDialog'
 import { type MovementFormState } from './components/MovementDrawer'
-import { SummaryStrip } from './components/SummaryStrip'
-import { ViewSwitch } from './components/ViewSwitch'
 import { useAppData } from './hooks/useAppData'
 import { useHashView } from './hooks/useHashView'
 import { useTheme } from './hooks/useTheme'
 import { useToast } from './hooks/useToast'
-import {
-  addGoal,
-  addCategory,
-  addMovement,
-  db,
-  deleteCategory,
-  deleteRecord,
-  exportBackup,
-  importBackup,
-  parseBackupPayload,
-  saveProfile,
-} from './lib/db'
-import {
-  estimateFiscalPosition,
-  filterMovementsByYear,
-  getAvailableYears,
-  type Goal,
-  type Movement,
-  type MovementType,
-  type TaxProfile,
-} from './lib/finance'
+import { addCategory, addGoal, addMovement, db, deleteCategory, deleteRecord, exportBackup, importBackup, parseBackupPayload, saveProfile } from './lib/db'
+import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type Goal, type Movement, type MovementType, type TaxProfile } from './lib/finance'
 import { type ActiveView } from './lib/routing'
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
-
 const today = new Date().toISOString().slice(0, 10)
 const currentYear = new Date().getFullYear()
 const minYear = 1900
 const maxYear = currentYear + 5
-
 function clampYear(year: number) {
   return Math.min(maxYear, Math.max(minYear, year))
 }
-
 function App() {
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [drawerOpen, setDrawerOpen] = useState(true)
@@ -74,7 +51,6 @@ function App() {
     savedAmount: '',
     targetDate: today,
   })
-
   const availableYears = useMemo(
     () => [...new Set([...getAvailableYears(movements, currentYear), selectedYear])]
       .filter((year) => year >= minYear && year <= maxYear)
@@ -89,7 +65,6 @@ function App() {
     () => estimateFiscalPosition(annualMovements, profile, selectedYear),
     [annualMovements, profile, selectedYear],
   )
-
   function setType(type: MovementType) {
     setMovementType(type)
     setMovementErrors({})
@@ -99,7 +74,6 @@ function App() {
       status: type === 'income' ? 'collected' : 'paid',
     }))
   }
-
   function openNewMovement() {
     selectView('movements')
     setEditingMovementId(null)
@@ -115,7 +89,6 @@ function App() {
     })
     setDrawerOpen(true)
   }
-
   function editMovement(movement: Movement) {
     selectView('movements')
     setEditingMovementId(movement.id ?? null)
@@ -131,7 +104,6 @@ function App() {
     })
     setDrawerOpen(true)
   }
-
   async function submitMovement(event: FormEvent) {
     event.preventDefault()
     const amount = Number(movementForm.amount)
@@ -159,14 +131,12 @@ function App() {
     } else {
       await addMovement(nextMovement)
     }
-
     setMovementForm({ ...movementForm, description: '', amount: '', notes: '' })
     setMovementErrors({})
     setEditingMovementId(null)
     setDrawerOpen(false)
     notify(editingMovementId ? 'Movimento aggiornato.' : 'Movimento salvato.')
   }
-
   async function submitGoal(event: FormEvent) {
     event.preventDefault()
     const targetAmount = Number(goalForm.targetAmount)
@@ -189,13 +159,11 @@ function App() {
     } else {
       await addGoal(nextGoal)
     }
-
     setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
     setGoalErrors({})
     setEditingGoalId(null)
     notify(editingGoalId ? 'Obiettivo aggiornato.' : 'Obiettivo creato.')
   }
-
   function editGoal(goal: Goal) {
     setEditingGoalId(goal.id ?? null)
     setGoalErrors({})
@@ -207,7 +175,6 @@ function App() {
     })
     selectView('goals')
   }
-
   async function removeGoal(id?: string) {
     if (!id) return
     const goal = goals.find((item) => item.id === id)
@@ -220,14 +187,12 @@ function App() {
       },
     } : undefined)
   }
-
   async function updateProfile(field: keyof TaxProfile, value: string | boolean) {
     await saveProfile({
       ...profile,
       [field]: typeof value === 'boolean' ? value : Number(value),
     })
   }
-
   async function removeMovement(id?: string) {
     if (!id) return
     const movement = movements.find((item) => item.id === id)
@@ -240,7 +205,6 @@ function App() {
       },
     } : undefined)
   }
-
   async function createCategory(type: MovementType, name: string) {
     const trimmedName = name.trim()
 
@@ -249,7 +213,6 @@ function App() {
       notify('Categoria aggiunta.')
     }
   }
-
   async function removeCategory(id?: string) {
     if (!id) return
     const category = categories.find((item) => item.id === id)
@@ -261,22 +224,18 @@ function App() {
       notify('Categoria in uso: modifica prima i movimenti collegati.')
       return
     }
-
     await deleteCategory(id)
     notify('Categoria eliminata.')
   }
-
   async function handleExport() {
     await exportBackup()
     notify('Backup esportato.')
   }
-
   async function handleImport(file?: File) {
     if (!file) return
 
     try {
       const payload = parseBackupPayload(JSON.parse(await file.text()))
-
       setPendingImport({ fileName: file.name, payload })
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Import non riuscito.')
@@ -284,7 +243,6 @@ function App() {
       if (backupInputRef.current) backupInputRef.current.value = ''
     }
   }
-
   async function confirmImport() {
     if (!pendingImport) return
 
@@ -292,6 +250,24 @@ function App() {
     setPendingImport(null)
     notify('Backup importato.')
   }
+  function cancelGoalEdit() {
+    setEditingGoalId(null)
+    setGoalErrors({})
+    setGoalForm({
+      name: '',
+      targetAmount: '',
+      savedAmount: '',
+      targetDate: today,
+    })
+  }
+  const contentProps = { activeView, annualMovements, goals, profile, categories, theme, fiscalEstimate, selectedYear,
+    drawerOpen, movementType, movementForm, movementErrors, goalForm, goalErrors, editingMovementId, editingGoalId,
+    setMovementForm, setGoalForm, setType, setDrawerOpen, setEditingMovementId, setMovementErrors,
+    onSelectView: selectView, onNewMovement: openNewMovement, onEditMovement: editMovement, onDeleteMovement: removeMovement,
+    onSubmitMovement: submitMovement, onSubmitGoal: submitGoal, onCancelGoalEdit: cancelGoalEdit, onEditGoal: editGoal,
+    onDeleteGoal: removeGoal, onExport: handleExport, onImport: () => backupInputRef.current?.click(), onProfileChange: updateProfile,
+    onCreateCategory: createCategory, onDeleteCategory: removeCategory, onThemeChange: setTheme,
+    onRestartSetup: () => saveProfile({ ...profile, setupCompleted: false }) }
 
   if (!appData) {
     return <main className="loading">Caricamento dati locali...</main>
@@ -299,91 +275,23 @@ function App() {
 
   if (!profile.setupCompleted) {
     return (
-      <SetupView
-        profile={profile}
-        onComplete={async (configuredProfile) => {
+      <SetupView profile={profile} onComplete={async (configuredProfile) => {
           await saveProfile({ ...configuredProfile, setupCompleted: true })
           notify('Profilo iniziale configurato.')
-        }}
-      />
+        }} />
     )
   }
 
   return (
-    <AppFrame
-      activeView={activeView}
-      selectedYear={selectedYear}
-      availableYears={availableYears}
-      profile={profile}
-      toast={toast}
-      backupInputRef={backupInputRef}
-      onSelectView={selectView}
-      onSetYear={(year) => setSelectedYear(clampYear(year))}
-      onExport={handleExport}
-      onImportFile={handleImport}
+    <AppFrame activeView={activeView} selectedYear={selectedYear} availableYears={availableYears} profile={profile}
+      toast={toast} backupInputRef={backupInputRef} onSelectView={selectView}
+      onSetYear={(year) => setSelectedYear(clampYear(year))} onExport={handleExport} onImportFile={handleImport}
       modals={
         pendingImport ? (
-          <ImportPreviewDialog
-            pendingImport={pendingImport}
-            onCancel={() => setPendingImport(null)}
-            onConfirm={confirmImport}
-          />
+          <ImportPreviewDialog pendingImport={pendingImport} onCancel={() => setPendingImport(null)} onConfirm={confirmImport} />
         ) : null
-      }
-    >
-        {activeView !== 'profile' && activeView !== 'backup' && annualMovements.length > 0 ? (
-          <SummaryStrip estimate={fiscalEstimate} expenseTotal={fiscalEstimate.expenses} />
-        ) : null}
-
-        <ViewSwitch
-          activeView={activeView}
-          annualMovements={annualMovements}
-          goals={goals}
-          profile={profile}
-          categories={categories}
-          theme={theme}
-          fiscalEstimate={fiscalEstimate}
-          selectedYear={selectedYear}
-          drawerOpen={drawerOpen}
-          movementType={movementType}
-          movementForm={movementForm}
-          movementErrors={movementErrors}
-          goalForm={goalForm}
-          goalErrors={goalErrors}
-          editingMovementId={editingMovementId}
-          editingGoalId={editingGoalId}
-          setMovementForm={setMovementForm}
-          setGoalForm={setGoalForm}
-          setType={setType}
-          setDrawerOpen={setDrawerOpen}
-          setEditingMovementId={setEditingMovementId}
-          setMovementErrors={setMovementErrors}
-          onSelectView={selectView}
-          onNewMovement={openNewMovement}
-          onEditMovement={editMovement}
-          onDeleteMovement={removeMovement}
-          onSubmitMovement={submitMovement}
-          onSubmitGoal={submitGoal}
-          onCancelGoalEdit={() => {
-            setEditingGoalId(null)
-            setGoalErrors({})
-            setGoalForm({
-              name: '',
-              targetAmount: '',
-              savedAmount: '',
-              targetDate: today,
-            })
-          }}
-          onEditGoal={editGoal}
-          onDeleteGoal={removeGoal}
-          onExport={handleExport}
-          onImport={() => backupInputRef.current?.click()}
-          onProfileChange={updateProfile}
-          onCreateCategory={createCategory}
-          onDeleteCategory={removeCategory}
-          onThemeChange={setTheme}
-          onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })}
-        />
+      }>
+      <AppContent {...contentProps} />
     </AppFrame>
   )
 }
