@@ -1153,6 +1153,10 @@ textarea:focus {
   display: none;
 }
 
+.mobile-more-panel {
+  display: none;
+}
+
 .section-note {
   color: var(--muted);
   border-top: 1px solid var(--border);
@@ -1429,6 +1433,42 @@ textarea:focus {
     background: var(--surface);
     box-shadow: 0 -10px 28px rgba(24, 38, 36, 0.08);
     padding: 6px max(8px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
+  }
+
+  .mobile-more-panel {
+    position: fixed;
+    right: 10px;
+    bottom: 62px;
+    z-index: 26;
+    display: grid;
+    gap: 4px;
+    width: min(240px, calc(100vw - 20px));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 8px;
+  }
+
+  .mobile-more-panel button {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    padding: 0 10px;
+    text-align: left;
+  }
+
+  .mobile-more-panel button.active {
+    color: var(--accent-dark);
+    background: var(--accent-soft);
+    font-weight: 700;
   }
 
   .mobile-bottom-nav button {

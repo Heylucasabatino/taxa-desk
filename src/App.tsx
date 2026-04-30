@@ -252,6 +252,16 @@ function App() {
 
   async function removeCategory(id?: string) {
     if (!id) return
+    const category = categories.find((item) => item.id === id)
+    const isInUse = category
+      ? movements.some((movement) => movement.category === category.name)
+      : false
+
+    if (isInUse) {
+      notify('Categoria in uso: modifica prima i movimenti collegati.')
+      return
+    }
+
     await deleteCategory(id)
     notify('Categoria eliminata.')
   }

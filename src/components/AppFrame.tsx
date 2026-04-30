@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react'
+import { useState, type ReactNode, type RefObject } from 'react'
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Database,
   Home,
-  Info,
+  MoreHorizontal,
   SlidersHorizontal,
   Target,
   WalletCards,
@@ -122,10 +122,6 @@ function Sidebar({
           </button>
         ))}
       </div>
-      <button className="info-link" type="button">
-        <Info size={18} />
-        Informazioni
-      </button>
     </aside>
   )
 }
@@ -186,14 +182,51 @@ function MobileBottomNav({
   activeView: ActiveView
   onSelectView: (view: ActiveView) => void
 }) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const primaryViews: ActiveView[] = ['overview', 'movements', 'reserves', 'goals']
+  const secondaryItems = navItems.filter(([view]) => !primaryViews.includes(view))
+  const isSecondaryActive = secondaryItems.some(([view]) => view === activeView)
+
+  function selectMobileView(view: ActiveView) {
+    setMoreOpen(false)
+    onSelectView(view)
+  }
+
   return (
-    <nav className="mobile-bottom-nav" aria-label="Navigazione mobile">
-      {navItems.filter(([view]) => ['overview', 'movements', 'reserves', 'goals', 'analytics'].includes(view)).map(([view, label, Icon]) => (
-        <button className={activeView === view ? 'active' : ''} type="button" key={view} onClick={() => onSelectView(view)}>
-          <Icon size={18} />
-          {label}
+    <>
+      {moreOpen ? (
+        <div className="mobile-more-panel" role="menu">
+          {secondaryItems.map(([view, label, Icon]) => (
+            <button
+              className={activeView === view ? 'active' : ''}
+              type="button"
+              key={view}
+              role="menuitem"
+              onClick={() => selectMobileView(view)}
+            >
+              <Icon size={18} />
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <nav className="mobile-bottom-nav" aria-label="Navigazione mobile">
+        {navItems.filter(([view]) => primaryViews.includes(view)).map(([view, label, Icon]) => (
+          <button className={activeView === view ? 'active' : ''} type="button" key={view} onClick={() => selectMobileView(view)}>
+            <Icon size={18} />
+            {label}
+          </button>
+        ))}
+        <button
+          className={isSecondaryActive || moreOpen ? 'active' : ''}
+          type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          <MoreHorizontal size={18} />
+          Altro
         </button>
-      ))}
-    </nav>
+      </nav>
+    </>
   )
 }
