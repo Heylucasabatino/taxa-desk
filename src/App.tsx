@@ -10,8 +10,10 @@ import { useHashView } from './hooks/useHashView'
 import { useToast } from './hooks/useToast'
 import {
   addGoal,
+  addCategory,
   addMovement,
   db,
+  deleteCategory,
   deleteRecord,
   exportBackup,
   importBackup,
@@ -51,7 +53,7 @@ function App() {
   const [goalErrors, setGoalErrors] = useState<Partial<Record<keyof GoalFormState, string>>>({})
   const backupInputRef = useRef<HTMLInputElement>(null)
   const { toast, notify } = useToast()
-  const { appData, movements, goals, profile } = useAppData()
+  const { appData, movements, goals, profile, categories } = useAppData(notify)
   const handleViewChange = useCallback((view: ActiveView) => {
     setDrawerOpen(view === 'movements')
   }, [])
@@ -237,6 +239,21 @@ function App() {
     } : undefined)
   }
 
+  async function createCategory(type: MovementType, name: string) {
+    const trimmedName = name.trim()
+
+    if (trimmedName) {
+      await addCategory({ type, name: trimmedName })
+      notify('Categoria aggiunta.')
+    }
+  }
+
+  async function removeCategory(id?: string) {
+    if (!id) return
+    await deleteCategory(id)
+    notify('Categoria eliminata.')
+  }
+
   async function handleExport() {
     await exportBackup()
     notify('Backup esportato.')
@@ -300,11 +317,11 @@ function App() {
           <SummaryStrip estimate={fiscalEstimate} expenseTotal={fiscalEstimate.expenses} />
         ) : null}
 
-        <ViewSwitch activeView={activeView} annualMovements={annualMovements} goals={goals} profile={profile} fiscalEstimate={fiscalEstimate} selectedYear={selectedYear} drawerOpen={drawerOpen} movementType={movementType} movementForm={movementForm} movementErrors={movementErrors} goalForm={goalForm} goalErrors={goalErrors} editingMovementId={editingMovementId} editingGoalId={editingGoalId} setMovementForm={setMovementForm} setGoalForm={setGoalForm} setType={setType} setDrawerOpen={setDrawerOpen} setEditingMovementId={setEditingMovementId} setMovementErrors={setMovementErrors} onSelectView={selectView} onNewMovement={openNewMovement} onEditMovement={editMovement} onDeleteMovement={removeMovement} onSubmitMovement={submitMovement} onSubmitGoal={submitGoal} onCancelGoalEdit={() => {
+        <ViewSwitch activeView={activeView} annualMovements={annualMovements} goals={goals} profile={profile} categories={categories} fiscalEstimate={fiscalEstimate} selectedYear={selectedYear} drawerOpen={drawerOpen} movementType={movementType} movementForm={movementForm} movementErrors={movementErrors} goalForm={goalForm} goalErrors={goalErrors} editingMovementId={editingMovementId} editingGoalId={editingGoalId} setMovementForm={setMovementForm} setGoalForm={setGoalForm} setType={setType} setDrawerOpen={setDrawerOpen} setEditingMovementId={setEditingMovementId} setMovementErrors={setMovementErrors} onSelectView={selectView} onNewMovement={openNewMovement} onEditMovement={editMovement} onDeleteMovement={removeMovement} onSubmitMovement={submitMovement} onSubmitGoal={submitGoal} onCancelGoalEdit={() => {
           setEditingGoalId(null)
           setGoalErrors({})
           setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
-        }} onEditGoal={editGoal} onDeleteGoal={removeGoal} onExport={handleExport} onImport={() => backupInputRef.current?.click()} onProfileChange={updateProfile} onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })} />
+        }} onEditGoal={editGoal} onDeleteGoal={removeGoal} onExport={handleExport} onImport={() => backupInputRef.current?.click()} onProfileChange={updateProfile} onCreateCategory={createCategory} onDeleteCategory={removeCategory} onRestartSetup={() => saveProfile({ ...profile, setupCompleted: false })} />
 
     </AppFrame>
   )

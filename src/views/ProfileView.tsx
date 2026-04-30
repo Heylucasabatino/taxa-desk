@@ -1,19 +1,31 @@
+import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { MinimumPresetControl } from '../components/MinimumPresetControl'
 import { SectionHeader } from '../components/SectionHeader'
 import { CurrencyField } from '../components/fields/CurrencyField'
 import { PercentSetting } from '../components/fields/PercentSetting'
+import { categoriesByType, type Category } from '../constants/categories'
 import { helpText } from '../constants/helpText'
-import type { TaxProfile } from '../lib/finance'
+import type { MovementType, TaxProfile } from '../lib/finance'
 
 export function ProfileView({
   profile,
+  categories,
   onChange,
+  onCreateCategory,
+  onDeleteCategory,
   onRestartSetup,
 }: {
   profile: TaxProfile
+  categories: Category[]
   onChange: (field: keyof TaxProfile, value: string | boolean) => void
+  onCreateCategory: (type: MovementType, name: string) => void
+  onDeleteCategory: (id?: string) => void
   onRestartSetup: () => void
 }) {
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryType, setCategoryType] = useState<MovementType>('income')
+
   return (
     <section className="ledger-section profile-view">
       <SectionHeader
@@ -73,6 +85,34 @@ export function ProfileView({
           <small>Disattivalo solo se vuoi una stima prudenziale meno vincolante a inizio anno.</small>
         </span>
       </label>
+      <div className="profile-panel">
+        <h3>Categorie</h3>
+        <form className="category-form" onSubmit={(event) => {
+          event.preventDefault()
+          onCreateCategory(categoryType, categoryName)
+          setCategoryName('')
+        }}>
+          <select value={categoryType} onChange={(event) => setCategoryType(event.target.value as MovementType)}>
+            <option value="income">Introito</option>
+            <option value="expense">Spesa</option>
+          </select>
+          <input value={categoryName} placeholder="Nuova categoria" onChange={(event) => setCategoryName(event.target.value)} />
+          <button className="outline-button" type="submit">Aggiungi</button>
+        </form>
+        {(['income', 'expense'] as const).map((type) => (
+          <div className="category-list" key={type}>
+            <strong>{type === 'income' ? 'Introiti' : 'Spese'}</strong>
+            {categoriesByType(categories, type).map((category) => (
+              <span className="category-chip" key={category.id ?? category.name}>
+                {category.name}
+                <button className="row-action" type="button" aria-label={`Elimina ${category.name}`} onClick={() => onDeleteCategory(category.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
       <div className="profile-guide">
         <div>
           <strong>Configurazione guidata</strong>

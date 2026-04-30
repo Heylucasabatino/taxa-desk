@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import { defaultCategories } from '../constants/categories'
+import type { Category } from '../constants/categories'
 import type { ActiveView } from '../lib/routing'
 import type { FiscalEstimate, Goal, Movement, MovementType, TaxProfile } from '../lib/finance'
 import { AnalyticsView } from '../views/AnalyticsView'
@@ -18,6 +18,7 @@ export function ViewSwitch({
   annualMovements,
   goals,
   profile,
+  categories,
   fiscalEstimate,
   selectedYear,
   drawerOpen,
@@ -46,12 +47,15 @@ export function ViewSwitch({
   onExport,
   onImport,
   onProfileChange,
+  onCreateCategory,
+  onDeleteCategory,
   onRestartSetup,
 }: {
   activeView: ActiveView
   annualMovements: Movement[]
   goals: Goal[]
   profile: TaxProfile
+  categories: Category[]
   fiscalEstimate: FiscalEstimate
   selectedYear: number
   drawerOpen: boolean
@@ -80,22 +84,24 @@ export function ViewSwitch({
   onExport: () => void
   onImport: () => void
   onProfileChange: (field: keyof TaxProfile, value: string | boolean) => void
+  onCreateCategory: (type: MovementType, name: string) => void
+  onDeleteCategory: (id?: string) => void
   onRestartSetup: () => void
 }) {
   return (
     <div className={activeView === 'movements' ? 'content-shell' : 'content-shell single'}>
       <section className="main-ledger">
         {activeView === 'overview' ? <OverviewView movements={annualMovements} goals={goals} estimate={fiscalEstimate} onGoToMovements={onNewMovement} onGoToReserves={() => onSelectView('reserves')} onGoToGoals={() => onSelectView('goals')} onGoToProfile={() => onSelectView('profile')} /> : null}
-        {activeView === 'movements' ? <MovementsView movements={annualMovements} onDelete={onDeleteMovement} onEdit={onEditMovement} onNew={onNewMovement} onExport={onExport} onImport={onImport} /> : null}
+        {activeView === 'movements' ? <MovementsView movements={annualMovements} categories={categories} onDelete={onDeleteMovement} onEdit={onEditMovement} onNew={onNewMovement} onExport={onExport} onImport={onImport} /> : null}
         {activeView === 'reserves' ? <ReservesView estimate={fiscalEstimate} profile={profile} /> : null}
         {activeView === 'goals' ? <GoalsView goals={goals} profile={profile} goalForm={goalForm} goalErrors={goalErrors} setGoalForm={setGoalForm} editingGoalId={editingGoalId} onCancelEdit={onCancelGoalEdit} onEditGoal={onEditGoal} onDeleteGoal={onDeleteGoal} onSubmitGoal={onSubmitGoal} /> : null}
         {activeView === 'deadlines' ? <DeadlinesView selectedYear={selectedYear} /> : null}
         {activeView === 'analytics' ? <AnalyticsView movements={annualMovements} /> : null}
-        {activeView === 'profile' ? <ProfileView profile={profile} onChange={onProfileChange} onRestartSetup={onRestartSetup} /> : null}
+        {activeView === 'profile' ? <ProfileView profile={profile} categories={categories} onChange={onProfileChange} onCreateCategory={onCreateCategory} onDeleteCategory={onDeleteCategory} onRestartSetup={onRestartSetup} /> : null}
         {activeView === 'backup' ? <BackupView onExport={onExport} onImport={onImport} /> : null}
       </section>
       {activeView === 'movements' && drawerOpen ? (
-        <MovementDrawer movementType={movementType} movementForm={movementForm} isEditing={Boolean(editingMovementId)} categories={defaultCategories} errors={movementErrors} setMovementForm={setMovementForm} setType={setType} onClose={() => {
+        <MovementDrawer movementType={movementType} movementForm={movementForm} isEditing={Boolean(editingMovementId)} categories={categories} errors={movementErrors} setMovementForm={setMovementForm} setType={setType} onClose={() => {
           setDrawerOpen(false)
           setEditingMovementId(null)
           setMovementErrors({})

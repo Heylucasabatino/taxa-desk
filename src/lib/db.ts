@@ -1,5 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie'
 import {
+  defaultCategories,
+  type Category,
+} from '../constants/categories'
+import {
   defaultTaxProfile,
   type Expense,
   type Goal,
@@ -12,15 +16,21 @@ type StoredTaxProfile = TaxProfile & {
   id: 'default'
 }
 
+type MetaRecord = {
+  id: 'migrationCompleted'
+  value: boolean
+}
+
 export type BackupPayload = {
   meta: {
     app: 'fondi-e-tasse'
-    version: 2
+    version: 3
     exportedAt: string
   }
   movements: Movement[]
   goals: Goal[]
   settings: StoredTaxProfile
+  categories: Category[]
 }
 
 export const db = new Dexie('funds-and-taxes') as Dexie & {
@@ -29,6 +39,8 @@ export const db = new Dexie('funds-and-taxes') as Dexie & {
   movements: EntityTable<Movement, 'id'>
   goals: EntityTable<Goal, 'id'>
   settings: EntityTable<StoredTaxProfile, 'id'>
+  categories: EntityTable<Category, 'id'>
+  meta: EntityTable<MetaRecord, 'id'>
 }
 
 db.version(1).stores({
@@ -46,6 +58,41 @@ db.version(2).stores({
   settings: 'id',
 })
 
+db.version(3).stores({
+  incomes: 'id, date, category',
+  expenses: 'id, date, category',
+  movements: 'id, date, type, category, status',
+  goals: 'id, targetDate',
+  settings: 'id',
+  categories: 'id, type, name',
+  meta: 'id',
+})
+
+let dbErrorHandler: ((message: string) => void) | null = null
+
+export function setDbErrorHandler(handler: (message: string) => void) {
+  dbErrorHandler = handler
+}
+
+function reportDbError(error: unknown) {
+  const name = error instanceof DOMException || error instanceof Error ? error.name : ''
+
+  if (name === 'QuotaExceededError') {
+    dbErrorHandler?.('Spazio locale esaurito: libera spazio nel browser o riduci i dati importati.')
+  } else if (name === 'InvalidStateError') {
+    dbErrorHandler?.('IndexedDB non è disponibile: verifica modalità privata o impostazioni del browser.')
+  }
+}
+
+async function withDbErrors<T>(operation: () => Promise<T>) {
+  try {
+    return await operation()
+  } catch (error) {
+    reportDbError(error)
+    throw error
+  }
+}
+
 export async function ensureDefaultSettings() {
   const existing = await db.settings.get('default')
 
@@ -54,12 +101,28 @@ export async function ensureDefaultSettings() {
   }
 }
 
+export async function ensureDefaultCategories() {
+  const count = await db.categories.count()
+
+  if (count === 0) {
+    await db.categories.bulkPut(defaultCategories)
+  }
+}
+
 export async function ensureMovementMigration() {
   await ensureDefaultSettings()
+  await ensureDefaultCategories()
+
+  const migrationCompleted = await db.meta.get('migrationCompleted')
+
+  if (migrationCompleted?.value) {
+    return
+  }
 
   const movementCount = await db.movements.count()
 
   if (movementCount > 0) {
+    await db.meta.put({ id: 'migrationCompleted', value: true })
     return
   }
 
@@ -94,42 +157,55 @@ export async function ensureMovementMigration() {
   if (migratedMovements.length > 0) {
     await db.movements.bulkPut(migratedMovements)
   }
+  await db.meta.put({ id: 'migrationCompleted', value: true })
 }
 
 export async function saveProfile(profile: TaxProfile) {
-  await db.settings.put({ ...profile, id: 'default' })
+  await withDbErrors(() => db.settings.put({ ...profile, id: 'default' }))
 }
 
 export async function addMovement(movement: Movement) {
-  await db.movements.add({ ...movement, id: crypto.randomUUID() })
+  await withDbErrors(() => db.movements.add({ ...movement, id: crypto.randomUUID() }))
 }
 
 export async function addGoal(goal: Goal) {
-  await db.goals.add({ ...goal, id: crypto.randomUUID() })
+  await withDbErrors(() => db.goals.add({ ...goal, id: crypto.randomUUID() }))
 }
 
 export async function deleteRecord(table: 'movements' | 'goals', id: string) {
-  await db[table].delete(id)
+  await withDbErrors(() => db[table].delete(id))
+}
+
+export async function addCategory(category: Omit<Category, 'id'>) {
+  await withDbErrors(() =>
+    db.categories.add({ ...category, id: crypto.randomUUID() }),
+  )
+}
+
+export async function deleteCategory(id: string) {
+  await withDbErrors(() => db.categories.delete(id))
 }
 
 export async function buildBackupPayload(): Promise<BackupPayload> {
   await ensureMovementMigration()
 
-  const [movements, goals, profile] = await Promise.all([
+  const [movements, goals, profile, categories] = await Promise.all([
     db.movements.orderBy('date').reverse().toArray(),
     db.goals.orderBy('targetDate').toArray(),
     db.settings.get('default'),
+    db.categories.orderBy('name').toArray(),
   ])
 
   return {
     meta: {
       app: 'fondi-e-tasse',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
     },
     movements,
     goals,
     settings: profile ?? { ...defaultTaxProfile, id: 'default' },
+    categories,
   }
 }
 
@@ -150,12 +226,14 @@ export async function exportBackup() {
 export async function importBackup(payload: unknown) {
   const parsed = parseBackupPayload(payload)
 
-  await db.transaction('rw', db.movements, db.goals, db.settings, async () => {
-    await Promise.all([db.movements.clear(), db.goals.clear()])
+  await withDbErrors(() => db.transaction('rw', [db.movements, db.goals, db.settings, db.categories, db.meta], async () => {
+    await Promise.all([db.movements.clear(), db.goals.clear(), db.categories.clear()])
     await db.movements.bulkPut(parsed.movements)
     await db.goals.bulkPut(parsed.goals)
     await db.settings.put(parsed.settings)
-  })
+    await db.categories.bulkPut(parsed.categories)
+    await db.meta.put({ id: 'migrationCompleted', value: true })
+  }))
 }
 
 export function parseBackupPayload(payload: unknown): BackupPayload {
@@ -167,18 +245,20 @@ export function parseBackupPayload(payload: unknown): BackupPayload {
     incomes?: Income[]
     expenses?: Expense[]
     profile?: StoredTaxProfile
+    categories?: Category[]
   }
 
   if (Array.isArray(candidate.movements)) {
     return {
       meta: {
         app: 'fondi-e-tasse',
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
       },
       movements: candidate.movements.map(normalizeMovement),
       goals: Array.isArray(candidate.goals) ? candidate.goals.map(normalizeGoal) : [],
       settings: normalizeSettings(candidate.settings),
+      categories: normalizeCategories(candidate.categories),
     }
   }
 
@@ -203,12 +283,13 @@ export function parseBackupPayload(payload: unknown): BackupPayload {
     return {
       meta: {
         app: 'fondi-e-tasse',
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
       },
       movements: legacyMovements,
       goals: Array.isArray(candidate.goals) ? candidate.goals.map(normalizeGoal) : [],
       settings: normalizeSettings(candidate.profile ?? candidate.settings),
+      categories: normalizeCategories(candidate.categories),
     }
   }
 
@@ -248,4 +329,16 @@ function normalizeSettings(settings?: Partial<StoredTaxProfile>): StoredTaxProfi
     ...settings,
     id: 'default',
   }
+}
+
+function normalizeCategories(categories?: Category[]): Category[] {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return defaultCategories
+  }
+
+  return categories.map((category) => ({
+    id: category.id ?? crypto.randomUUID(),
+    name: category.name || 'Altro',
+    type: category.type === 'expense' ? 'expense' : 'income',
+  }))
 }

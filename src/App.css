@@ -683,6 +683,23 @@
   background: var(--surface);
 }
 
+.movement-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sort-button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  padding: 0;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1127,6 +1144,33 @@ textarea:focus {
   padding: 18px;
 }
 
+.category-form {
+  max-width: 760px;
+  display: grid;
+  grid-template-columns: 150px minmax(180px, 1fr) auto;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.category-list {
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  padding: 4px 5px 4px 10px;
+}
+
 .toggle-row {
   max-width: 760px;
   display: flex;
@@ -1526,6 +1570,14 @@ textarea:focus {
 
   .backup-actions {
     flex-direction: column;
+  }
+
+  .movement-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .category-form {
+    grid-template-columns: 1fr;
   }
 
   .import-summary,
