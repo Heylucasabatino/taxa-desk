@@ -12,7 +12,7 @@ import { useToast } from './hooks/useToast'
 import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type AppPreferences, type Goal, type Movement, type MovementType, type PersonalDeadline, type TaxProfile } from './lib/finance'
 import { type ActiveView } from './lib/routing'
 import { appStorage, type PortableDiagnostics } from './lib/storage'
-import { checkForAppUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, isTauriRuntime, readInstalledVersion, toUpdateState, type UpdateState } from './lib/updates'
+import { checkForAppUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, isTauriRuntime, openLatestReleasePage, readInstalledVersion, toUpdateState, type UpdateState } from './lib/updates'
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
 import type { Update } from '@tauri-apps/plugin-updater'
@@ -404,6 +404,13 @@ function App() {
       }))
     }
   }
+  async function handleOpenDownloadPage() {
+    try {
+      await openLatestReleasePage()
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Impossibile aprire la pagina download.')
+    }
+  }
   async function handleImport(file?: File) {
     if (!file) return
 
@@ -440,7 +447,7 @@ function App() {
     onSelectView: selectView, onNewMovement: openNewMovement, onEditMovement: editMovement, onDeleteMovement: removeMovement,
     onSubmitMovement: submitMovement, onSubmitGoal: submitGoal, onCancelGoalEdit: cancelGoalEdit, onEditGoal: editGoal,
     onDeleteGoal: removeGoal, onExport: handleExport, onImport: () => backupInputRef.current?.click(), onCheckUpdates: handleCheckUpdates,
-    onInstallUpdate: handleInstallUpdate, onProfileChange: updateProfile,
+    onInstallUpdate: handleInstallUpdate, onOpenDownloadPage: handleOpenDownloadPage, onProfileChange: updateProfile,
     onSavePreferences: savePreferences, onAddDeadline: addDeadline, onUpdateDeadline: updateDeadline,
     onDeleteDeadline: removeDeadline, onToggleDeadlineOccurrence: toggleDeadlineOccurrence,
     onCreateCategory: createCategory, onDeleteCategory: removeCategory, onThemeChange: setTheme,

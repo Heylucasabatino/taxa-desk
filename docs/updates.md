@@ -120,6 +120,7 @@ Test manuali richiesti:
 - verifica senza rete: mostra errore di rete comprensibile;
 - nessun aggiornamento disponibile: stato `Nessun aggiornamento`;
 - update disponibile: mostra changelog e pulsante di installazione;
+- fallback manuale: `Apri pagina download` apre `https://github.com/Heylucasabatino/taxa-desk/releases/latest`;
 - backup pre-update riuscito: path backup visibile;
 - errore backup: installazione bloccata;
 - messaggi privacy chiari.
@@ -131,7 +132,7 @@ Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla pi
 La distribuzione portable a cartella resta supportata per dati e backup locali, ma l'update in-place di una semplice cartella portable non e' un flusso garantito dal plugin updater. Se nei test reali l'installer NSIS non preserva bene l'esperienza portable desiderata, usare un flusso assistito alternativo:
 
 1. creare sempre backup JSON locale;
-2. scaricare o aprire la pagina GitHub Release;
+2. aprire la pagina GitHub Release con `Apri pagina download`;
 3. mostrare istruzioni UI per chiudere l'app e sostituire solo i file applicativi;
 4. non toccare `data/`, `backups/` e `logs/`.
 

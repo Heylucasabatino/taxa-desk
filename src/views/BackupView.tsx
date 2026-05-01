@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Database, DownloadCloud, FolderOpen, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Database, DownloadCloud, ExternalLink, FolderOpen, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button } from '@fluentui/react-components'
 import type { PortableDiagnostics } from '../lib/storage'
 import type { UpdateState } from '../lib/updates'
@@ -11,6 +11,7 @@ export function BackupView({
   onImport,
   onCheckUpdates,
   onInstallUpdate,
+  onOpenDownloadPage,
 }: {
   diagnostics: PortableDiagnostics | null
   updateState: UpdateState
@@ -18,6 +19,7 @@ export function BackupView({
   onImport: () => void
   onCheckUpdates: () => void
   onInstallUpdate: () => void
+  onOpenDownloadPage: () => void
 }) {
   const busy = ['checking', 'backup', 'downloading', 'installing'].includes(updateState.phase)
   const canInstall = updateState.phase === 'available'
@@ -148,6 +150,9 @@ export function BackupView({
               Scarica e installa
             </Button>
           ) : null}
+          <Button appearance="subtle" icon={<AppIcon icon={ExternalLink} size={16} />} onClick={onOpenDownloadPage}>
+            Apri pagina download
+          </Button>
         </div>
       </section>
     </section>

@@ -1,5 +1,8 @@
 import { getVersion } from '@tauri-apps/api/app'
 import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updater'
+import { openUrl } from '@tauri-apps/plugin-opener'
+
+export const RELEASES_LATEST_URL = 'https://github.com/Heylucasabatino/taxa-desk/releases/latest'
 
 export type UpdatePhase =
   | 'idle'
@@ -44,6 +47,15 @@ export async function checkForAppUpdate() {
   }
 
   return check({ timeout: 30_000 })
+}
+
+export async function openLatestReleasePage() {
+  if (isTauriRuntime()) {
+    await openUrl(RELEASES_LATEST_URL)
+    return
+  }
+
+  window.open(RELEASES_LATEST_URL, '_blank', 'noopener,noreferrer')
 }
 
 export function toUpdateState(update: Update, currentVersion: string): UpdateState {

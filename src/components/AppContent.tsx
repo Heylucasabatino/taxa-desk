@@ -49,6 +49,7 @@ export function AppContent({
   onImport,
   onCheckUpdates,
   onInstallUpdate,
+  onOpenDownloadPage,
   onProfileChange,
   onSavePreferences,
   onAddDeadline,
@@ -99,6 +100,7 @@ export function AppContent({
   onImport: () => void
   onCheckUpdates: () => void
   onInstallUpdate: () => void
+  onOpenDownloadPage: () => void
   onProfileChange: (field: keyof TaxProfile, value: string | boolean) => void
   onSavePreferences: (preferences: AppPreferences) => Promise<void>
   onAddDeadline: (deadline: PersonalDeadline) => Promise<void>
@@ -151,6 +153,7 @@ export function AppContent({
         onImport={onImport}
         onCheckUpdates={onCheckUpdates}
         onInstallUpdate={onInstallUpdate}
+        onOpenDownloadPage={onOpenDownloadPage}
         onProfileChange={onProfileChange}
         onSavePreferences={onSavePreferences}
         onAddDeadline={onAddDeadline}
