@@ -78,7 +78,7 @@ Controllare che `latest.json` contenga:
 https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/latest.json
 ```
 
-- [ ] Verificare che l'installer sia scaricabile.
+- [ ] Verificare che l’installer sia scaricabile.
 - [ ] Aggiornare README se cambiano requisiti o installazione.
 
 ## Dopo la release

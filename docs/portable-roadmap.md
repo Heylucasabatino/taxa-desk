@@ -2,13 +2,13 @@
 
 ## Obiettivo
 
-Trasformare la webapp React/Vite in una app desktop portable per Windows, privacy-first e senza backend, con dati salvati in un file SQLite locale controllabile dall'utente.
+Trasformare la webapp React/Vite in una app desktop portable per Windows, privacy-first e senza backend, con dati salvati in un file SQLite locale controllabile dall’utente.
 
 Target finale:
 
 ```text
-Fondi e Tasse/
-  Fondi e Tasse.exe
+Taxa Desk/
+  Taxa Desk.exe
   data/
     fondi-e-tasse.sqlite
   backups/
@@ -17,7 +17,7 @@ Fondi e Tasse/
     app.log
 ```
 
-La UI React resta la base dell'app. IndexedDB/Dexie resta come fallback web/dev e come sorgente di migrazione tramite backup JSON.
+La UI React resta la base dell’app. IndexedDB/Dexie resta come fallback web/dev e come sorgente di migrazione tramite backup JSON.
 
 ## Decisioni fissate
 
@@ -26,7 +26,7 @@ La UI React resta la base dell'app. IndexedDB/Dexie resta come fallback web/dev 
 - Distribuzione iniziale: Windows portable/cartella zip, non cloud e non Docker.
 - Dati primari: `data/fondi-e-tasse.sqlite`.
 - Recovery e migrazione: backup JSON versione 3, compatibile con il formato attuale.
-- ID record: UUID testuali (`TEXT PRIMARY KEY`) per continuita con IndexedDB e backup.
+- ID record: UUID testuali (`TEXT PRIMARY KEY`) per continuità con IndexedDB e backup.
 - Cifratura: esclusa dalla prima versione desktop.
 - Telemetria, sync, autenticazione, backend: esclusi.
 
@@ -45,9 +45,9 @@ Criterio di accettazione: `npm run tauri dev` apre la UI esistente in una finest
 - Risolvere la cartella base con `std::env::current_exe().parent()`.
 - Creare `data/`, `backups/`, `logs/`.
 - Eseguire un `.write-test` per verificare che la cartella sia scrivibile.
-- Esporre un comando diagnostico che ritorna path exe, path dati, path backup, path log e stato scrivibilita.
+- Esporre un comando diagnostico che ritorna path exe, path dati, path backup, path log e stato scrivibilità.
 
-Criterio di accettazione: al primo avvio vengono create le cartelle accanto all'exe, oppure l'app mostra un errore chiaro se la posizione non e scrivibile.
+Criterio di accettazione: al primo avvio vengono create le cartelle accanto all’exe, oppure l’app mostra un errore chiaro se la posizione non è scrivibile.
 
 ### 3. Storage adapter frontend
 
@@ -55,7 +55,7 @@ Criterio di accettazione: al primo avvio vengono create le cartelle accanto all'
 - Mantenere due implementazioni:
   - `dexieStorage` per browser/dev.
   - `tauriStorage` per desktop.
-- Rimuovere dalle componenti l'accesso diretto a Dexie.
+- Rimuovere dalle componenti l’accesso diretto a Dexie.
 
 Criterio di accettazione: la build web continua a funzionare con Dexie, mentre la build Tauri usa comandi desktop.
 
@@ -73,13 +73,13 @@ Criterio di accettazione: inserire/modificare/eliminare un movimento aggiorna il
 - Riutilizzare backup JSON versione 3 come formato di import/export.
 - Importare backup in transazione, sostituendo i dati locali dopo conferma UI.
 - Creare backup automatici:
-  - all'avvio, se ci sono dati;
+  - all’avvio, se ci sono dati;
   - dopo modifiche con debounce;
   - alla chiusura quando possibile.
 - Scrivere backup in modo atomico: file `.tmp`, flush, rename finale.
 - Rotazione iniziale: ultimi 7 backup giornalieri + ultimi 4 settimanali.
 
-Criterio di accettazione: un backup esportato dalla versione web puo essere importato nella versione desktop e viceversa.
+Criterio di accettazione: un backup esportato dalla versione web può essere importato nella versione desktop e viceversa.
 
 ### 6. Logging e recovery
 
@@ -93,13 +93,13 @@ Criterio di accettazione: in caso di errore storage esiste un log locale utile p
 
 - Generare build desktop Windows.
 - Preparare una cartella zip portable con exe e istruzioni minime.
-- Evitare installer come canale principale finche il modello portable non e validato.
+- Evitare installer come canale principale finché il modello portable non è validato.
 
-Criterio di accettazione: la cartella copiata in un'altra posizione continua ad avviarsi e a usare il proprio `data/`.
+Criterio di accettazione: la cartella copiata in un’altra posizione continua ad avviarsi e a usare il proprio `data/`.
 
 ## Rischi e mitigazioni
 
-- Cartella accanto all'exe non scrivibile: rilevazione con `.write-test`, messaggio chiaro e futuro selettore cartella dati.
+- Cartella accanto all’exe non scrivibile: rilevazione con `.write-test`, messaggio chiaro e futuro selettore cartella dati.
 - WebView2 mancante: documentare requisito Windows 10 moderno/Windows 11.
 - Perdita dati da bug di migrazione: import/export JSON e backup automatico prima delle operazioni distruttive.
 - Corruzione backup per crash: scrittura atomica `.tmp` + rename.
@@ -118,4 +118,3 @@ Criterio di accettazione: la cartella copiata in un'altra posizione continua ad 
 - Backup automatico prodotto dopo modifiche e leggibile come JSON.
 - Avvio da cartella diversa usa il `data/` della nuova cartella.
 - Cartella non scrivibile produce errore controllato.
-

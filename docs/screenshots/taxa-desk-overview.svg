@@ -1,0 +1,90 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#f3f3f3"/>
+  <rect x="24" y="24" width="1392" height="852" rx="10" fill="#ffffff" stroke="#d8d8d8"/>
+  <rect x="24" y="24" width="1392" height="54" rx="10" fill="#f7f7f7"/>
+  <rect x="24" y="70" width="1392" height="1" fill="#e1e1e1"/>
+  <text x="52" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" fill="#202020">Taxa Desk</text>
+  <text x="165" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Il tuo spazio locale per entrate, tasse e scadenze</text>
+
+  <rect x="24" y="78" width="236" height="798" fill="#fafafa"/>
+  <rect x="260" y="78" width="1" height="798" fill="#e6e6e6"/>
+  <text x="52" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" fill="#5f6664">NAVIGAZIONE</text>
+  <rect x="44" y="152" width="192" height="38" rx="6" fill="#dff3ef"/>
+  <text x="72" y="177" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" fill="#0b5f59">Panoramica</text>
+  <text x="72" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#3b3b3b">Movimenti</text>
+  <text x="72" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#3b3b3b">Accantonamenti</text>
+  <text x="72" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#3b3b3b">Scadenze</text>
+  <text x="72" y="366" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#3b3b3b">Analisi</text>
+  <text x="72" y="412" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#3b3b3b">Dati &amp; backup</text>
+  <rect x="44" y="804" width="192" height="42" rx="6" fill="#ffffff" stroke="#e1e1e1"/>
+  <circle cx="66" cy="825" r="5" fill="#0f766e"/>
+  <text x="82" y="830" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#5f6664">Archivio locale attivo</text>
+
+  <text x="300" y="136" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="650" fill="#202020">Panoramica 2026</text>
+  <text x="300" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#5f6664">Entrate, tasse stimate e accantonamenti sotto controllo, senza cloud.</text>
+  <rect x="1164" y="116" width="180" height="42" rx="6" fill="#0f766e"/>
+  <text x="1192" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" fill="#ffffff">Nuovo movimento</text>
+
+  <g>
+    <rect x="300" y="206" width="236" height="126" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+    <text x="324" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Incassato</text>
+    <text x="324" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="650" fill="#202020">€ 42.800</text>
+    <rect x="324" y="302" width="126" height="8" rx="4" fill="#0f766e"/>
+    <rect x="450" y="302" width="54" height="8" rx="4" fill="#dff3ef"/>
+  </g>
+  <g>
+    <rect x="560" y="206" width="236" height="126" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+    <text x="584" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Da accantonare</text>
+    <text x="584" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="650" fill="#202020">€ 12.950</text>
+    <rect x="584" y="302" width="94" height="8" rx="4" fill="#c45a1c"/>
+    <rect x="678" y="302" width="86" height="8" rx="4" fill="#f4e7df"/>
+  </g>
+  <g>
+    <rect x="820" y="206" width="236" height="126" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+    <text x="844" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Disponibile stimato</text>
+    <text x="844" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="650" fill="#202020">€ 24.430</text>
+    <rect x="844" y="302" width="146" height="8" rx="4" fill="#0f766e"/>
+    <rect x="990" y="302" width="34" height="8" rx="4" fill="#dff3ef"/>
+  </g>
+  <g>
+    <rect x="1080" y="206" width="236" height="126" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+    <text x="1104" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Prossima scadenza</text>
+    <text x="1104" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="650" fill="#202020">30 giugno</text>
+    <text x="1104" y="311" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">Acconto imposte</text>
+  </g>
+
+  <rect x="300" y="372" width="650" height="322" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+  <text x="324" y="414" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650" fill="#202020">Flusso mensile</text>
+  <text x="324" y="438" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#5f6664">Entrate, spese e riserva fiscale stimata</text>
+  <line x1="336" y1="640" x2="914" y2="640" stroke="#e8e8e8"/>
+  <line x1="336" y1="578" x2="914" y2="578" stroke="#f0f0f0"/>
+  <line x1="336" y1="516" x2="914" y2="516" stroke="#f0f0f0"/>
+  <rect x="362" y="520" width="24" height="120" rx="4" fill="#0f766e"/>
+  <rect x="408" y="560" width="24" height="80" rx="4" fill="#c45a1c"/>
+  <rect x="454" y="492" width="24" height="148" rx="4" fill="#0f766e"/>
+  <rect x="500" y="548" width="24" height="92" rx="4" fill="#c45a1c"/>
+  <rect x="546" y="468" width="24" height="172" rx="4" fill="#0f766e"/>
+  <rect x="592" y="584" width="24" height="56" rx="4" fill="#c45a1c"/>
+  <rect x="638" y="500" width="24" height="140" rx="4" fill="#0f766e"/>
+  <rect x="684" y="552" width="24" height="88" rx="4" fill="#c45a1c"/>
+  <rect x="730" y="450" width="24" height="190" rx="4" fill="#0f766e"/>
+  <rect x="776" y="574" width="24" height="66" rx="4" fill="#c45a1c"/>
+  <rect x="822" y="486" width="24" height="154" rx="4" fill="#0f766e"/>
+  <rect x="868" y="556" width="24" height="84" rx="4" fill="#c45a1c"/>
+
+  <rect x="982" y="372" width="334" height="322" rx="8" fill="#ffffff" stroke="#e1e1e1"/>
+  <text x="1006" y="414" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650" fill="#202020">Scadenze vicine</text>
+  <rect x="1006" y="448" width="286" height="54" rx="6" fill="#fafafa" stroke="#e8e8e8"/>
+  <text x="1024" y="481" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#202020">Saldo e acconto imposte</text>
+  <text x="1202" y="481" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#c45a1c">30/06</text>
+  <rect x="1006" y="518" width="286" height="54" rx="6" fill="#fafafa" stroke="#e8e8e8"/>
+  <text x="1024" y="551" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#202020">Contributo integrativo</text>
+  <text x="1202" y="551" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#0b5f59">31/07</text>
+  <rect x="1006" y="588" width="286" height="54" rx="6" fill="#fafafa" stroke="#e8e8e8"/>
+  <text x="1024" y="621" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#202020">Backup mensile</text>
+  <text x="1202" y="621" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5f6664">15/08</text>
+
+  <rect x="300" y="724" width="1016" height="86" rx="8" fill="#f4f7f6" stroke="#dff3ef"/>
+  <text x="324" y="762" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="650" fill="#0b5f59">Dati locali, backup sotto controllo</text>
+  <text x="324" y="790" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#3b3b3b">Nessun account, nessuna telemetria, nessun caricamento online dei dati fiscali.</text>
+</svg>

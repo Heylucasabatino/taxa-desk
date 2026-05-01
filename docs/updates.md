@@ -6,7 +6,7 @@ Taxa Desk usa il plugin ufficiale Tauri updater v2 con un endpoint statico su Gi
 https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/latest.json
 ```
 
-Il controllo aggiornamenti deve restare manuale e privacy-first: non invia dati fiscali, movimenti, contenuti SQLite, path locali, account o telemetria. Il client scarica solo il manifest `latest.json` e, dopo conferma dell'utente, l'installer firmato.
+Il controllo aggiornamenti deve restare manuale e privacy-first: non invia dati fiscali, movimenti, contenuti SQLite, path locali, account o telemetria. Il client scarica solo il manifest `latest.json` e, dopo conferma dell’utente, l’installer firmato.
 
 ## Chiavi updater
 
@@ -26,7 +26,7 @@ Non committare mai:
 - valori reali di `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`;
 - file `.env` o script locali che contengono segreti.
 
-Per release locali o CI usa variabili d'ambiente:
+Per release locali o CI usa variabili d’ambiente:
 
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY="C:\Users\<utente>\.tauri\fondi-e-tasse\updater.key"
@@ -57,7 +57,7 @@ $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<password-se-presente>"
 npm run tauri:build
 ```
 
-6. Verifica che `src-tauri/target/release/bundle/nsis/` contenga l'installer `.exe` e la firma `.sig`.
+6. Verifica che `src-tauri/target/release/bundle/nsis/` contenga l’installer `.exe` e la firma `.sig`.
 7. Genera `latest.json`:
 
 ```powershell
@@ -112,8 +112,8 @@ Scenario minimo da provare prima della distribuzione:
 6. Controlla che vengano mostrati versione installata, nuova versione e note.
 7. Premi `Scarica e installa`.
 8. Verifica che venga creato un backup JSON locale in `backups/`.
-9. Verifica che l'installazione parta solo dopo backup riuscito.
-10. Riapri l'app e controlla che `data/`, `backups/` e `logs/` siano ancora nella cartella locale.
+9. Verifica che l’installazione parta solo dopo backup riuscito.
+10. Riapri l’app e controlla che `data/`, `backups/` e `logs/` siano ancora nella cartella locale.
 
 Test manuali richiesti:
 
@@ -127,13 +127,13 @@ Test manuali richiesti:
 
 ## Limite portable
 
-Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla piattaforma. Su Windows con target NSIS usa l'installer firmato e `installMode: "passive"`.
+Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla piattaforma. Su Windows con target NSIS usa l’installer firmato e `installMode: "passive"`.
 
-La distribuzione portable a cartella resta supportata per dati e backup locali, ma l'update in-place di una semplice cartella portable non e' un flusso garantito dal plugin updater. Se nei test reali l'installer NSIS non preserva bene l'esperienza portable desiderata, usare un flusso assistito alternativo:
+La distribuzione portable a cartella resta supportata per dati e backup locali, ma l’update in-place di una semplice cartella portable non è un flusso garantito dal plugin updater. Se nei test reali l’installer NSIS non preserva bene l’esperienza portable desiderata, usare un flusso assistito alternativo:
 
 1. creare sempre backup JSON locale;
 2. aprire la pagina GitHub Release con `Apri pagina download`;
-3. mostrare istruzioni UI per chiudere l'app e sostituire solo i file applicativi;
+3. mostrare istruzioni UI per chiudere l’app e sostituire solo i file applicativi;
 4. non toccare `data/`, `backups/` e `logs/`.
 
-Questo mantiene il controllo all'utente e non introduce backend custom o telemetria.
+Questo mantiene il controllo all’utente e non introduce backend custom o telemetria.

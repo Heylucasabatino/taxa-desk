@@ -1,6 +1,6 @@
 # Installazione
 
-Questa guida descrive l'installazione manuale di Taxa Desk su Windows.
+Questa guida descrive l’installazione manuale di Taxa Desk su Windows.
 
 ## Requisiti
 
@@ -10,11 +10,11 @@ Questa guida descrive l'installazione manuale di Taxa Desk su Windows.
 
 ## Download
 
-Scarica l'ultima versione da:
+Scarica l’ultima versione da:
 
 [https://github.com/Heylucasabatino/taxa-desk/releases/latest](https://github.com/Heylucasabatino/taxa-desk/releases/latest)
 
-Nella release cerca l'installer Windows, ad esempio:
+Nella release cerca l’installer Windows, ad esempio:
 
 ```text
 Taxa.Desk_0.1.2_x64-setup.exe
@@ -22,15 +22,15 @@ Taxa.Desk_0.1.2_x64-setup.exe
 
 ## Installazione
 
-1. Scarica l'installer dalla pagina release.
-2. Esegui l'installer.
+1. Scarica l’installer dalla pagina release.
+2. Esegui l’installer.
 3. Avvia Taxa Desk.
 4. Apri `Dati & backup`.
-5. Crea un backup JSON se hai gia' dati da conservare.
+5. Crea un backup JSON se hai già dati da conservare.
 
 ## Aggiornamento manuale
 
-Se preferisci non usare l'aggiornamento integrato:
+Se preferisci non usare l’aggiornamento integrato:
 
 1. Apri `Dati & backup`.
 2. Crea un backup JSON.
@@ -39,19 +39,19 @@ Se preferisci non usare l'aggiornamento integrato:
 5. Installa la nuova versione.
 6. Riapri Taxa Desk e verifica che i dati siano presenti.
 
-La cartella `data/`, `backups/` e `logs/` non deve essere cancellata manualmente durante l'aggiornamento.
+La cartella `data/`, `backups/` e `logs/` non deve essere cancellata manualmente durante l’aggiornamento.
 
 ## Disinstallazione
 
 Prima di disinstallare, crea un backup JSON dalla sezione `Dati & backup` e conservalo in una cartella scelta da te.
 
-Se elimini manualmente la cartella locale dell'app, potresti eliminare anche database, backup e log.
+Se elimini manualmente la cartella locale dell’app, potresti eliminare anche database, backup e log.
 
 ## Problemi comuni
 
-### Windows blocca l'app scaricata
+### Windows blocca l’app scaricata
 
-Nelle build beta Windows potrebbe mostrare un avviso SmartScreen. Verifica sempre di aver scaricato l'installer dalla pagina ufficiale GitHub Releases del progetto.
+Nelle build beta Windows potrebbe mostrare un avviso SmartScreen. Verifica sempre di aver scaricato l’installer dalla pagina ufficiale GitHub Releases del progetto.
 
 ### I dati non compaiono dopo un aggiornamento
 

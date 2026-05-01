@@ -1,19 +1,19 @@
 # Privacy
 
-Taxa Desk e' progettato come applicazione desktop locale e privacy-first.
+Taxa Desk è progettato come applicazione desktop locale e privacy-first.
 
 ## Dati trattati localmente
 
-L'app puo' salvare sul dispositivo dell'utente:
+L’app può salvare sul dispositivo dell’utente:
 
 - entrate, spese e relative note;
 - obiettivi di risparmio;
-- impostazioni fiscali inserite dall'utente;
+- impostazioni fiscali inserite dall’utente;
 - scadenze e preferenze locali;
-- backup JSON esportati dall'utente;
-- log tecnici locali dell'app.
+- backup JSON esportati dall’utente;
+- log tecnici locali dell’app.
 
-Nella distribuzione desktop i dati sono salvati nella cartella locale dell'app, tipicamente:
+Nella distribuzione desktop i dati sono salvati nella cartella locale dell’app, tipicamente:
 
 ```text
 Taxa Desk/
@@ -22,7 +22,7 @@ Taxa Desk/
   logs/app.log
 ```
 
-## Cosa non fa l'app
+## Cosa non fa l’app
 
 Taxa Desk non introduce:
 
@@ -36,20 +36,20 @@ Taxa Desk non introduce:
 
 ## Aggiornamenti online
 
-Il controllo aggiornamenti contatta GitHub Releases per scaricare solo informazioni sulla versione disponibile e, dopo conferma dell'utente, l'installer firmato.
+Il controllo aggiornamenti contatta GitHub Releases per scaricare solo informazioni sulla versione disponibile e, dopo conferma dell’utente, l’installer firmato.
 
-Il controllo aggiornamenti non invia a GitHub contenuti fiscali, movimenti, backup, path locali o contenuti del database SQLite. Come per qualunque richiesta HTTP, GitHub e l'infrastruttura di rete possono ricevere dati tecnici minimi necessari alla connessione, come indirizzo IP e user agent.
+Il controllo aggiornamenti non invia a GitHub contenuti fiscali, movimenti, backup, path locali o contenuti del database SQLite. Come per qualunque richiesta HTTP, GitHub e l’infrastruttura di rete possono ricevere dati tecnici minimi necessari alla connessione, come indirizzo IP e user agent.
 
-Prima di installare un aggiornamento, Taxa Desk crea un backup JSON locale. Se il backup fallisce, l'installazione non procede.
+Prima di installare un aggiornamento, Taxa Desk crea un backup JSON locale. Se il backup fallisce, l’installazione non procede.
 
 ## Backup
 
-I backup JSON sono creati e conservati localmente. L'utente decide se copiarli, spostarli, eliminarli o conservarli su supporti esterni.
+I backup JSON sono creati e conservati localmente. L’utente decide se copiarli, spostarli, eliminarli o conservarli su supporti esterni.
 
-## Responsabilita' dell'utente
+## Responsabilità dell’utente
 
-L'utente resta responsabile della custodia del dispositivo, dei backup e di eventuali copie esportate. Per dati sensibili si consiglia di proteggere Windows con password, cifratura disco e backup periodici.
+L’utente resta responsabile della custodia del dispositivo, dei backup e di eventuali copie esportate. Per dati sensibili si consiglia di proteggere Windows con password, cifratura disco e backup periodici.
 
 ## Contatti
 
-Per segnalazioni privacy o richieste sul trattamento dei dati apri una issue nel repository o usa i contatti indicati nel profilo GitHub del progetto.
+Per segnalazioni privacy o richieste sul trattamento dei dati usa i contatti indicati nel profilo GitHub del progetto. Non pubblicare dati fiscali reali, backup completi o contenuti del database SQLite nelle issue.
