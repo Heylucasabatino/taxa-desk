@@ -47,9 +47,12 @@ export function MovementDrawer({
   onSubmit: (event: FormEvent) => void
 }) {
   return (
-    <aside className="drawer" aria-label="Nuovo movimento">
+    <aside className="drawer movement-inspector" aria-label="Nuovo movimento">
       <div className="drawer-header">
-        <h2>{isEditing ? 'Modifica movimento' : 'Nuovo movimento'}</h2>
+        <div>
+          <h2>{isEditing ? 'Modifica movimento' : 'Nuovo movimento'}</h2>
+          <span>{movementType === 'income' ? 'Introito' : 'Spesa'} nel registro annuale</span>
+        </div>
         <button
           className="ghost-button"
           type="button"
@@ -76,15 +79,27 @@ export function MovementDrawer({
         </button>
       </div>
       <form className="drawer-form" onSubmit={onSubmit}>
-        <Field label="Data">
-          <input
-            type="date"
-            value={movementForm.date}
-            onChange={(event) =>
-              setMovementForm({ ...movementForm, date: event.target.value })
+        <div className="inspector-group">
+          <Field label="Data">
+            <input
+              type="date"
+              value={movementForm.date}
+              onChange={(event) =>
+                setMovementForm({ ...movementForm, date: event.target.value })
+              }
+            />
+          </Field>
+          <CurrencyField
+            label="Importo"
+            value={movementForm.amount}
+            help={helpText.movementAmount}
+            error={errors?.amount}
+            onChange={(value) =>
+              setMovementForm({ ...movementForm, amount: String(value) })
             }
+            required
           />
-        </Field>
+        </div>
         <Field label="Descrizione">
           <input
             value={movementForm.description}
@@ -101,50 +116,42 @@ export function MovementDrawer({
             }
           />
         </Field>
-        <Field label="Categoria">
-          <select
-            value={movementForm.category}
-            onChange={(event) =>
-              setMovementForm({
-                ...movementForm,
-                category: event.target.value,
-              })
-            }
-          >
-            {categoriesByType(categories, movementType).map((category) => (
-              <option key={category.id ?? category.name}>{category.name}</option>
-            ))}
-          </select>
-        </Field>
-        <CurrencyField
-          label="Importo"
-          value={movementForm.amount}
-          help={helpText.movementAmount}
-          error={errors?.amount}
-          onChange={(value) =>
-            setMovementForm({ ...movementForm, amount: String(value) })
-          }
-          required
-        />
-        <Field label="Stato" help={helpText.movementStatus}>
-          <select
-            value={movementForm.status}
-            onChange={(event) =>
-              setMovementForm({
-                ...movementForm,
-                status: event.target.value as MovementStatus,
-              })
-            }
-          >
-            {(movementType === 'income' ? incomeStatuses : expenseStatuses).map(
-              ([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ),
-            )}
-          </select>
-        </Field>
+        <div className="inspector-group">
+          <Field label="Categoria">
+            <select
+              value={movementForm.category}
+              onChange={(event) =>
+                setMovementForm({
+                  ...movementForm,
+                  category: event.target.value,
+                })
+              }
+            >
+              {categoriesByType(categories, movementType).map((category) => (
+                <option key={category.id ?? category.name}>{category.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Stato" help={helpText.movementStatus}>
+            <select
+              value={movementForm.status}
+              onChange={(event) =>
+                setMovementForm({
+                  ...movementForm,
+                  status: event.target.value as MovementStatus,
+                })
+              }
+            >
+              {(movementType === 'income' ? incomeStatuses : expenseStatuses).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </Field>
+        </div>
         <Field label="Note (facoltative)">
           <textarea
             value={movementForm.notes}

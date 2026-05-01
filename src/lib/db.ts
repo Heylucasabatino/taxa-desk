@@ -5,14 +5,16 @@ import {
 } from '../constants/categories'
 import {
   defaultTaxProfile,
+  type AppPreferences,
   type Expense,
   type Goal,
   type Income,
   type Movement,
+  type PersonalDeadline,
   type TaxProfile,
 } from './finance'
 
-type StoredTaxProfile = TaxProfile & {
+export type StoredTaxProfile = TaxProfile & {
   id: 'default'
 }
 
@@ -21,16 +23,22 @@ type MetaRecord = {
   value: boolean
 }
 
+type StoredPreferences = AppPreferences & {
+  id: 'default'
+}
+
 export type BackupPayload = {
   meta: {
     app: 'fondi-e-tasse'
-    version: 3
+    version: 3 | 4
     exportedAt: string
   }
   movements: Movement[]
   goals: Goal[]
   settings: StoredTaxProfile
   categories: Category[]
+  deadlines: PersonalDeadline[]
+  preferences: StoredPreferences
 }
 
 export const db = new Dexie('funds-and-taxes') as Dexie & {
@@ -40,6 +48,8 @@ export const db = new Dexie('funds-and-taxes') as Dexie & {
   goals: EntityTable<Goal, 'id'>
   settings: EntityTable<StoredTaxProfile, 'id'>
   categories: EntityTable<Category, 'id'>
+  deadlines: EntityTable<PersonalDeadline, 'id'>
+  preferences: EntityTable<StoredPreferences, 'id'>
   meta: EntityTable<MetaRecord, 'id'>
 }
 
@@ -65,6 +75,18 @@ db.version(3).stores({
   goals: 'id, targetDate',
   settings: 'id',
   categories: 'id, type, name',
+  meta: 'id',
+})
+
+db.version(4).stores({
+  incomes: 'id, date, category',
+  expenses: 'id, date, category',
+  movements: 'id, date, type, category, status',
+  goals: 'id, targetDate',
+  settings: 'id',
+  categories: 'id, type, name',
+  deadlines: 'id, date, category, recurrence',
+  preferences: 'id',
   meta: 'id',
 })
 
@@ -160,6 +182,14 @@ export async function ensureMovementMigration() {
   await db.meta.put({ id: 'migrationCompleted', value: true })
 }
 
+export async function ensureDefaultPreferences() {
+  const existing = await db.preferences.get('default')
+
+  if (!existing) {
+    await db.preferences.put({ id: 'default', safetyThresholdAmount: null })
+  }
+}
+
 export async function saveProfile(profile: TaxProfile) {
   await withDbErrors(() => db.settings.put({ ...profile, id: 'default' }))
 }
@@ -172,7 +202,17 @@ export async function addGoal(goal: Goal) {
   await withDbErrors(() => db.goals.add({ ...goal, id: crypto.randomUUID() }))
 }
 
-export async function deleteRecord(table: 'movements' | 'goals', id: string) {
+export async function addDeadline(deadline: PersonalDeadline) {
+  await withDbErrors(() =>
+    db.deadlines.add({ ...deadline, id: crypto.randomUUID() }),
+  )
+}
+
+export async function savePreferences(preferences: AppPreferences) {
+  await withDbErrors(() => db.preferences.put({ ...preferences, id: 'default' }))
+}
+
+export async function deleteRecord(table: 'movements' | 'goals' | 'deadlines', id: string) {
   await withDbErrors(() => db[table].delete(id))
 }
 
@@ -188,24 +228,29 @@ export async function deleteCategory(id: string) {
 
 export async function buildBackupPayload(): Promise<BackupPayload> {
   await ensureMovementMigration()
+  await ensureDefaultPreferences()
 
-  const [movements, goals, profile, categories] = await Promise.all([
+  const [movements, goals, profile, categories, deadlines, preferences] = await Promise.all([
     db.movements.orderBy('date').reverse().toArray(),
     db.goals.orderBy('targetDate').toArray(),
     db.settings.get('default'),
     db.categories.orderBy('name').toArray(),
+    db.deadlines.orderBy('date').toArray(),
+    db.preferences.get('default'),
   ])
 
   return {
     meta: {
       app: 'fondi-e-tasse',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
     },
     movements,
     goals,
     settings: profile ?? { ...defaultTaxProfile, id: 'default' },
     categories,
+    deadlines,
+    preferences: preferences ?? { id: 'default', safetyThresholdAmount: null },
   }
 }
 
@@ -226,12 +271,14 @@ export async function exportBackup() {
 export async function importBackup(payload: unknown) {
   const parsed = parseBackupPayload(payload)
 
-  await withDbErrors(() => db.transaction('rw', [db.movements, db.goals, db.settings, db.categories, db.meta], async () => {
-    await Promise.all([db.movements.clear(), db.goals.clear(), db.categories.clear()])
+  await withDbErrors(() => db.transaction('rw', [db.movements, db.goals, db.settings, db.categories, db.deadlines, db.preferences, db.meta], async () => {
+    await Promise.all([db.movements.clear(), db.goals.clear(), db.categories.clear(), db.deadlines.clear()])
     await db.movements.bulkPut(parsed.movements)
     await db.goals.bulkPut(parsed.goals)
     await db.settings.put(parsed.settings)
     await db.categories.bulkPut(parsed.categories)
+    await db.deadlines.bulkPut(parsed.deadlines)
+    await db.preferences.put(parsed.preferences)
     await db.meta.put({ id: 'migrationCompleted', value: true })
   }))
 }
@@ -246,19 +293,23 @@ export function parseBackupPayload(payload: unknown): BackupPayload {
     expenses?: Expense[]
     profile?: StoredTaxProfile
     categories?: Category[]
+    deadlines?: PersonalDeadline[]
+    preferences?: StoredPreferences
   }
 
   if (Array.isArray(candidate.movements)) {
     return {
       meta: {
         app: 'fondi-e-tasse',
-        version: 3,
+        version: 4,
         exportedAt: new Date().toISOString(),
       },
       movements: candidate.movements.map(normalizeMovement),
       goals: Array.isArray(candidate.goals) ? candidate.goals.map(normalizeGoal) : [],
       settings: normalizeSettings(candidate.settings),
       categories: normalizeCategories(candidate.categories),
+      deadlines: normalizeDeadlines(candidate.deadlines),
+      preferences: normalizePreferences(candidate.preferences),
     }
   }
 
@@ -283,13 +334,15 @@ export function parseBackupPayload(payload: unknown): BackupPayload {
     return {
       meta: {
         app: 'fondi-e-tasse',
-        version: 3,
+        version: 4,
         exportedAt: new Date().toISOString(),
       },
       movements: legacyMovements,
       goals: Array.isArray(candidate.goals) ? candidate.goals.map(normalizeGoal) : [],
       settings: normalizeSettings(candidate.profile ?? candidate.settings),
       categories: normalizeCategories(candidate.categories),
+      deadlines: normalizeDeadlines(candidate.deadlines),
+      preferences: normalizePreferences(candidate.preferences),
     }
   }
 
@@ -341,4 +394,32 @@ function normalizeCategories(categories?: Category[]): Category[] {
     name: category.name || 'Altro',
     type: category.type === 'expense' ? 'expense' : 'income',
   }))
+}
+
+function normalizeDeadlines(deadlines?: PersonalDeadline[]): PersonalDeadline[] {
+  if (!Array.isArray(deadlines)) {
+    return []
+  }
+
+  return deadlines.map((deadline) => ({
+    id: deadline.id ?? crypto.randomUUID(),
+    title: deadline.title || 'Scadenza personale',
+    date: deadline.date ?? new Date().toISOString().slice(0, 10),
+    category: deadline.category ?? 'personal',
+    recurrence: deadline.recurrence ?? 'none',
+    notes: deadline.notes ?? '',
+    completedOccurrences: Array.isArray(deadline.completedOccurrences)
+      ? deadline.completedOccurrences
+      : [],
+  }))
+}
+
+function normalizePreferences(preferences?: Partial<StoredPreferences>): StoredPreferences {
+  return {
+    id: 'default',
+    safetyThresholdAmount:
+      typeof preferences?.safetyThresholdAmount === 'number'
+        ? preferences.safetyThresholdAmount
+        : null,
+  }
 }

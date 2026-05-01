@@ -35,12 +35,12 @@ export function SetupView({
     <main className="setup-shell">
       <section className="setup-card">
         <div className="setup-intro">
-          <div className="app-mark" aria-hidden="true">FT</div>
+          <div className="app-mark" aria-hidden="true">TD</div>
           <p>Configurazione iniziale</p>
           <h1>Prima rendiamo attendibili le stime.</h1>
           <span>
-            Questi valori restano modificabili nel profilo fiscale. Servono solo
-            a evitare una dashboard vuota con calcoli impliciti.
+            Il tuo spazio locale per entrate, tasse e scadenze. Questi valori
+            restano modificabili nel profilo fiscale.
           </span>
         </div>
 

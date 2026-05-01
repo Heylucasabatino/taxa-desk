@@ -1,22 +1,27 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { Category } from '../constants/categories'
 import type { ThemePreference } from '../hooks/useTheme'
-import type { FiscalEstimate, Goal, Movement, MovementType, TaxProfile } from '../lib/finance'
+import type { AppPreferences, FiscalEstimate, Goal, Movement, MovementType, PersonalDeadline, TaxProfile } from '../lib/finance'
 import type { ActiveView } from '../lib/routing'
+import type { PortableDiagnostics } from '../lib/storage'
+import type { UpdateState } from '../lib/updates'
 import type { GoalFormState } from './GoalForm'
 import type { MovementFormState } from './MovementDrawer'
-import { SummaryStrip } from './SummaryStrip'
 import { ViewSwitch } from './ViewSwitch'
 
 export function AppContent({
   activeView,
   annualMovements,
   goals,
+  deadlines,
+  preferences,
   profile,
   categories,
   theme,
   fiscalEstimate,
   selectedYear,
+  diagnostics,
+  updateState,
   drawerOpen,
   movementType,
   movementForm,
@@ -42,7 +47,14 @@ export function AppContent({
   onDeleteGoal,
   onExport,
   onImport,
+  onCheckUpdates,
+  onInstallUpdate,
   onProfileChange,
+  onSavePreferences,
+  onAddDeadline,
+  onUpdateDeadline,
+  onDeleteDeadline,
+  onToggleDeadlineOccurrence,
   onCreateCategory,
   onDeleteCategory,
   onThemeChange,
@@ -51,11 +63,15 @@ export function AppContent({
   activeView: ActiveView
   annualMovements: Movement[]
   goals: Goal[]
+  deadlines: PersonalDeadline[]
+  preferences: AppPreferences
   profile: TaxProfile
   categories: Category[]
   theme: ThemePreference
   fiscalEstimate: FiscalEstimate
   selectedYear: number
+  diagnostics: PortableDiagnostics | null
+  updateState: UpdateState
   drawerOpen: boolean
   movementType: MovementType
   movementForm: MovementFormState
@@ -81,26 +97,33 @@ export function AppContent({
   onDeleteGoal: (id?: string) => void
   onExport: () => void
   onImport: () => void
+  onCheckUpdates: () => void
+  onInstallUpdate: () => void
   onProfileChange: (field: keyof TaxProfile, value: string | boolean) => void
+  onSavePreferences: (preferences: AppPreferences) => Promise<void>
+  onAddDeadline: (deadline: PersonalDeadline) => Promise<void>
+  onUpdateDeadline: (deadline: PersonalDeadline) => Promise<void>
+  onDeleteDeadline: (id?: string) => Promise<void>
+  onToggleDeadlineOccurrence: (deadline: PersonalDeadline, occurrenceDate: string) => Promise<void>
   onCreateCategory: (type: MovementType, name: string) => void
   onDeleteCategory: (id?: string) => void
   onThemeChange: (theme: ThemePreference) => void
   onRestartSetup: () => void
 }) {
   return (
-    <>
-      {activeView !== 'profile' && activeView !== 'backup' && annualMovements.length > 0 ? (
-        <SummaryStrip estimate={fiscalEstimate} expenseTotal={fiscalEstimate.expenses} />
-      ) : null}
       <ViewSwitch
         activeView={activeView}
         annualMovements={annualMovements}
         goals={goals}
+        deadlines={deadlines}
+        preferences={preferences}
         profile={profile}
         categories={categories}
         theme={theme}
         fiscalEstimate={fiscalEstimate}
         selectedYear={selectedYear}
+        diagnostics={diagnostics}
+        updateState={updateState}
         drawerOpen={drawerOpen}
         movementType={movementType}
         movementForm={movementForm}
@@ -126,12 +149,18 @@ export function AppContent({
         onDeleteGoal={onDeleteGoal}
         onExport={onExport}
         onImport={onImport}
+        onCheckUpdates={onCheckUpdates}
+        onInstallUpdate={onInstallUpdate}
         onProfileChange={onProfileChange}
+        onSavePreferences={onSavePreferences}
+        onAddDeadline={onAddDeadline}
+        onUpdateDeadline={onUpdateDeadline}
+        onDeleteDeadline={onDeleteDeadline}
+        onToggleDeadlineOccurrence={onToggleDeadlineOccurrence}
         onCreateCategory={onCreateCategory}
         onDeleteCategory={onDeleteCategory}
         onThemeChange={onThemeChange}
         onRestartSetup={onRestartSetup}
       />
-    </>
   )
 }

@@ -44,104 +44,123 @@ export function MovementTable({
 
   if (movements.length === 0) {
     return (
-      <div className="empty-ledger">
-        <strong>Nessun movimento registrato</strong>
-        <span>Aggiungi il primo introito o una spesa per vedere le stime aggiornarsi.</span>
-        {onNew ? (
-          <button className="text-button empty-action" type="button" onClick={onNew}>
-            <Plus size={15} />
-            Registra movimento
-          </button>
-        ) : null}
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Descrizione</th>
+              <th>Categoria</th>
+              <th>Importo</th>
+              <th>Stato</th>
+              <th aria-label="Azioni" />
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={7}>
+                {onNew ? (
+                  <button className="inline-empty-action" type="button" onClick={onNew}>
+                    <Plus size={15} />
+                    Registra il primo movimento
+                  </button>
+                ) : (
+                  <span className="empty-text">Nessun movimento registrato.</span>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     )
   }
 
   return (
     <>
-    <div className="movement-filters">
-      <input value={query} placeholder="Cerca descrizione" onChange={(event) => setQuery(event.target.value)} />
-      <select value={typeFilter} onChange={(event) => {
-        setTypeFilter(event.target.value as 'all' | MovementType)
-        setCategoryFilter('all')
-      }}>
-        <option value="all">Tutti i tipi</option>
-        <option value="income">Introiti</option>
-        <option value="expense">Spese</option>
-      </select>
-      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | MovementStatus)}>
-        <option value="all">Tutti gli stati</option>
-        {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
-      <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-        <option value="all">Tutte le categorie</option>
-        {filteredCategories.map((category) => (
-          <option key={category.id ?? category.name} value={category.name}>
-            {category.name}
-          </option>
-        ))}
-      </select>
-    </div>
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <SortableHeader label="Data" sortKey="date" sort={sort} onSort={setSort} />
-            <th>Tipo</th>
-            <SortableHeader label="Descrizione" sortKey="description" sort={sort} onSort={setSort} />
-            <SortableHeader label="Categoria" sortKey="category" sort={sort} onSort={setSort} />
-            <SortableHeader label="Importo" sortKey="amount" sort={sort} onSort={setSort} />
-            <SortableHeader label="Stato" sortKey="status" sort={sort} onSort={setSort} />
-            <th aria-label="Azioni" />
-          </tr>
-        </thead>
-        <tbody>
-          {visibleMovements.map((movement) => (
-            <tr key={movement.id}>
-              <td>{formatDate(movement.date)}</td>
-              <td>
-                <span className={`type-cell ${movement.type}`}>
-                  {movement.type === 'income' ? (
-                    <ArrowUp size={15} />
-                  ) : (
-                    <ArrowDown size={15} />
-                  )}
-                  {movement.type === 'income' ? 'Introito' : 'Spesa'}
-                </span>
-              </td>
-              <td>{movement.description}</td>
-              <td>{movement.category}</td>
-              <td className={movement.type === 'income' ? 'amount-income' : 'amount-expense'}>
-                {formatCurrency(movement.amount)}
-              </td>
-              <td>
-                <span className="status-chip">{statusLabel(movement.status)}</span>
-              </td>
-              <td>
-                <div className="row-actions">
-                  <button
-                    className="row-action"
-                    type="button"
-                    aria-label={`Modifica ${movement.description}`}
-                    onClick={() => onEdit(movement)}
-                  >
-                    <Pencil size={15} />
-                  </button>
-                  <button
-                    className="row-action"
-                    type="button"
-                    aria-label={`Elimina ${movement.description}`}
-                    onClick={() => onDelete(movement.id)}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </td>
-            </tr>
+      <div className="movement-filters">
+        <input value={query} placeholder="Cerca descrizione" onChange={(event) => setQuery(event.target.value)} />
+        <select value={typeFilter} onChange={(event) => {
+          setTypeFilter(event.target.value as 'all' | MovementType)
+          setCategoryFilter('all')
+        }}>
+          <option value="all">Tutti i tipi</option>
+          <option value="income">Introiti</option>
+          <option value="expense">Spese</option>
+        </select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | MovementStatus)}>
+          <option value="all">Tutti gli stati</option>
+          {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+          <option value="all">Tutte le categorie</option>
+          {filteredCategories.map((category) => (
+            <option key={category.id ?? category.name} value={category.name}>
+              {category.name}
+            </option>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </select>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <SortableHeader label="Data" sortKey="date" sort={sort} onSort={setSort} />
+              <th>Tipo</th>
+              <SortableHeader label="Descrizione" sortKey="description" sort={sort} onSort={setSort} />
+              <SortableHeader label="Categoria" sortKey="category" sort={sort} onSort={setSort} />
+              <SortableHeader label="Importo" sortKey="amount" sort={sort} onSort={setSort} />
+              <SortableHeader label="Stato" sortKey="status" sort={sort} onSort={setSort} />
+              <th aria-label="Azioni" />
+            </tr>
+          </thead>
+          <tbody>
+            {visibleMovements.map((movement) => (
+              <tr key={movement.id}>
+                <td>{formatDate(movement.date)}</td>
+                <td>
+                  <span className={`type-cell ${movement.type}`}>
+                    {movement.type === 'income' ? (
+                      <ArrowUp size={15} />
+                    ) : (
+                      <ArrowDown size={15} />
+                    )}
+                    {movement.type === 'income' ? 'Introito' : 'Spesa'}
+                  </span>
+                </td>
+                <td>{movement.description}</td>
+                <td>{movement.category}</td>
+                <td className={movement.type === 'income' ? 'amount-income' : 'amount-expense'}>
+                  {formatCurrency(movement.amount)}
+                </td>
+                <td>
+                  <span className="status-chip">{statusLabel(movement.status)}</span>
+                </td>
+                <td>
+                  <div className="row-actions">
+                    <button
+                      className="row-action"
+                      type="button"
+                      aria-label={`Modifica ${movement.description}`}
+                      onClick={() => onEdit(movement)}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      className="row-action"
+                      type="button"
+                      aria-label={`Elimina ${movement.description}`}
+                      onClick={() => onDelete(movement.id)}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   )
 }

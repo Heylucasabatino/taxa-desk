@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { FluentProvider, webDarkTheme, webLightTheme, type Theme } from '@fluentui/react-components'
 import './App.css'
 import { AppContent } from './components/AppContent'
 import { AppFrame } from './components/AppFrame'
@@ -8,15 +9,37 @@ import { useAppData } from './hooks/useAppData'
 import { useHashView } from './hooks/useHashView'
 import { useTheme } from './hooks/useTheme'
 import { useToast } from './hooks/useToast'
-import { addCategory, addGoal, addMovement, db, deleteCategory, deleteRecord, exportBackup, importBackup, parseBackupPayload, saveProfile } from './lib/db'
-import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type Goal, type Movement, type MovementType, type TaxProfile } from './lib/finance'
+import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type AppPreferences, type Goal, type Movement, type MovementType, type PersonalDeadline, type TaxProfile } from './lib/finance'
 import { type ActiveView } from './lib/routing'
+import { appStorage, type PortableDiagnostics } from './lib/storage'
+import { checkForAppUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, isTauriRuntime, readInstalledVersion, toUpdateState, type UpdateState } from './lib/updates'
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
+import type { Update } from '@tauri-apps/plugin-updater'
 const today = new Date().toISOString().slice(0, 10)
 const currentYear = new Date().getFullYear()
 const minYear = 1900
 const maxYear = currentYear + 5
+const fluentLightTheme: Theme = {
+  ...webLightTheme,
+  fontFamilyBase: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+  colorBrandBackground: '#0f766e',
+  colorBrandBackgroundHover: '#0b6962',
+  colorBrandBackgroundPressed: '#084c47',
+  colorBrandForeground1: '#0b5f59',
+  colorCompoundBrandForeground1: '#0b5f59',
+  colorCompoundBrandForeground1Hover: '#084c47',
+}
+const fluentDarkTheme: Theme = {
+  ...webDarkTheme,
+  fontFamilyBase: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+  colorBrandBackground: '#39d0c1',
+  colorBrandBackgroundHover: '#6ee7d8',
+  colorBrandBackgroundPressed: '#9af1e6',
+  colorBrandForeground1: '#6ee7d8',
+  colorCompoundBrandForeground1: '#6ee7d8',
+  colorCompoundBrandForeground1Hover: '#9af1e6',
+}
 function clampYear(year: number) {
   return Math.min(maxYear, Math.max(minYear, year))
 }
@@ -27,16 +50,22 @@ function App() {
   const [editingMovementId, setEditingMovementId] = useState<string | null>(null)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [diagnostics, setDiagnostics] = useState<PortableDiagnostics | null>(null)
+  const [updateState, setUpdateState] = useState<UpdateState>(initialUpdateState)
   const [movementErrors, setMovementErrors] = useState<Partial<Record<keyof MovementFormState, string>>>({})
   const [goalErrors, setGoalErrors] = useState<Partial<Record<keyof GoalFormState, string>>>({})
   const backupInputRef = useRef<HTMLInputElement>(null)
+  const pendingUpdateRef = useRef<Update | null>(null)
   const { toast, notify } = useToast()
   const { theme, setTheme } = useTheme()
-  const { appData, movements, goals, profile, categories } = useAppData(notify)
+  const { appData, movements, goals, profile, categories, deadlines, preferences } = useAppData(notify)
   const handleViewChange = useCallback((view: ActiveView) => {
     setDrawerOpen(view === 'movements')
   }, [])
   const { activeView, selectView } = useHashView(handleViewChange)
+  const fluentTheme = document.documentElement.dataset.theme === 'dark'
+    ? fluentDarkTheme
+    : fluentLightTheme
   const [movementForm, setMovementForm] = useState<MovementFormState>({
     date: today,
     description: '',
@@ -65,6 +94,25 @@ function App() {
     () => estimateFiscalPosition(annualMovements, profile, selectedYear),
     [annualMovements, profile, selectedYear],
   )
+  useEffect(() => {
+    let active = true
+
+    readInstalledVersion().then((currentVersion) => {
+      if (active) {
+        setUpdateState((state) => ({ ...state, currentVersion }))
+      }
+    }).catch(() => undefined)
+
+    appStorage.getDiagnostics().then((nextDiagnostics) => {
+      if (active) setDiagnostics(nextDiagnostics)
+    }).catch(() => {
+      if (active) setDiagnostics(null)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [appData])
   function setType(type: MovementType) {
     setMovementType(type)
     setMovementErrors({})
@@ -127,9 +175,9 @@ function App() {
     }
 
     if (editingMovementId) {
-      await db.movements.put(nextMovement)
+      await appStorage.updateMovement(nextMovement)
     } else {
-      await addMovement(nextMovement)
+      await appStorage.addMovement(nextMovement)
     }
     setMovementForm({ ...movementForm, description: '', amount: '', notes: '' })
     setMovementErrors({})
@@ -155,9 +203,9 @@ function App() {
     }
 
     if (editingGoalId) {
-      await db.goals.put(nextGoal)
+      await appStorage.updateGoal(nextGoal)
     } else {
-      await addGoal(nextGoal)
+      await appStorage.addGoal(nextGoal)
     }
     setGoalForm({ name: '', targetAmount: '', savedAmount: '', targetDate: today })
     setGoalErrors({})
@@ -179,29 +227,59 @@ function App() {
     if (!id) return
     const goal = goals.find((item) => item.id === id)
 
-    await deleteRecord('goals', id)
+    await appStorage.deleteGoal(id)
     notify('Obiettivo eliminato.', goal ? {
       actionLabel: 'Ripristina',
       onAction: () => {
-        db.goals.put(goal).then(() => notify('Obiettivo ripristinato.'))
+        appStorage.restoreGoal(goal).then(() => notify('Obiettivo ripristinato.'))
       },
     } : undefined)
   }
   async function updateProfile(field: keyof TaxProfile, value: string | boolean) {
-    await saveProfile({
+    await appStorage.saveProfile({
       ...profile,
       [field]: typeof value === 'boolean' ? value : Number(value),
+    })
+  }
+  async function savePreferences(nextPreferences: AppPreferences) {
+    await appStorage.savePreferences(nextPreferences)
+    notify('Preferenze aggiornate.')
+  }
+  async function addDeadline(deadline: PersonalDeadline) {
+    await appStorage.addDeadline(deadline)
+    notify('Scadenza personale salvata.')
+  }
+  async function updateDeadline(deadline: PersonalDeadline) {
+    await appStorage.updateDeadline(deadline)
+    notify('Scadenza personale aggiornata.')
+  }
+  async function removeDeadline(id?: string) {
+    if (!id) return
+    await appStorage.deleteDeadline(id)
+    notify('Scadenza personale eliminata.')
+  }
+  async function toggleDeadlineOccurrence(deadline: PersonalDeadline, occurrenceDate: string) {
+    const completed = new Set(deadline.completedOccurrences ?? [])
+    if (completed.has(occurrenceDate)) {
+      completed.delete(occurrenceDate)
+    } else {
+      completed.add(occurrenceDate)
+    }
+
+    await appStorage.updateDeadline({
+      ...deadline,
+      completedOccurrences: [...completed].sort(),
     })
   }
   async function removeMovement(id?: string) {
     if (!id) return
     const movement = movements.find((item) => item.id === id)
 
-    await deleteRecord('movements', id)
+    await appStorage.deleteMovement(id)
     notify('Movimento eliminato.', movement ? {
       actionLabel: 'Ripristina',
       onAction: () => {
-        db.movements.put(movement).then(() => notify('Movimento ripristinato.'))
+        appStorage.restoreMovement(movement).then(() => notify('Movimento ripristinato.'))
       },
     } : undefined)
   }
@@ -209,7 +287,7 @@ function App() {
     const trimmedName = name.trim()
 
     if (trimmedName) {
-      await addCategory({ type, name: trimmedName })
+      await appStorage.addCategory({ type, name: trimmedName })
       notify('Categoria aggiunta.')
     }
   }
@@ -224,18 +302,113 @@ function App() {
       notify('Categoria in uso: modifica prima i movimenti collegati.')
       return
     }
-    await deleteCategory(id)
+    await appStorage.deleteCategory(id)
     notify('Categoria eliminata.')
   }
   async function handleExport() {
-    await exportBackup()
-    notify('Backup esportato.')
+    const path = await appStorage.exportBackup()
+    notify(path ? `Backup esportato in ${path}` : 'Backup esportato.')
+  }
+  async function handleCheckUpdates() {
+    if (!isTauriRuntime()) {
+      setUpdateState((state) => ({
+        ...state,
+        phase: 'unsupported',
+        error: 'Gli aggiornamenti online sono disponibili solo nell’app desktop.',
+      }))
+      return
+    }
+
+    pendingUpdateRef.current?.close().catch(() => undefined)
+    pendingUpdateRef.current = null
+    setUpdateState((state) => ({
+      phase: 'checking',
+      currentVersion: state.currentVersion,
+    }))
+
+    try {
+      const currentVersion = await readInstalledVersion()
+      const update = await checkForAppUpdate()
+
+      if (!update) {
+        setUpdateState({ phase: 'none', currentVersion })
+        notify('Nessun aggiornamento disponibile.')
+        return
+      }
+
+      pendingUpdateRef.current = update
+      setUpdateState(toUpdateState(update, currentVersion))
+      notify(`Aggiornamento ${update.version} disponibile.`)
+    } catch (error) {
+      setUpdateState((state) => ({
+        ...state,
+        phase: 'error',
+        error: formatUpdaterError(error),
+      }))
+    }
+  }
+  async function handleInstallUpdate() {
+    const update = pendingUpdateRef.current
+
+    if (!update) {
+      setUpdateState((state) => ({
+        ...state,
+        phase: 'error',
+        error: 'Verifica prima la disponibilita di un aggiornamento.',
+      }))
+      return
+    }
+
+    const confirmed = window.confirm(
+      'Prima dell’installazione verra creato un backup JSON locale. L’app potrebbe chiudersi durante l’aggiornamento. Continuare?',
+    )
+
+    if (!confirmed) return
+
+    try {
+      setUpdateState((state) => ({ ...state, phase: 'backup', error: undefined }))
+      const backupPath = await appStorage.exportBackup()
+      setUpdateState((state) => ({ ...state, backupPath, phase: 'downloading', progress: 0 }))
+
+      let downloadedBytes = 0
+      let contentLength = 0
+
+      await update.downloadAndInstall((event) => {
+        if (event.event === 'Started') {
+          contentLength = event.data.contentLength ?? 0
+          setUpdateState((state) => ({ ...state, phase: 'downloading', progress: 0 }))
+          return
+        }
+
+        if (event.event === 'Progress') {
+          downloadedBytes = getDownloadProgress(event, downloadedBytes)
+          setUpdateState((state) => ({
+            ...state,
+            phase: 'downloading',
+            progress: contentLength > 0 ? Math.min(100, Math.round((downloadedBytes / contentLength) * 100)) : undefined,
+          }))
+          return
+        }
+
+        setUpdateState((state) => ({ ...state, phase: 'installing', progress: 100 }))
+      })
+
+      pendingUpdateRef.current = null
+      setUpdateState((state) => ({ ...state, phase: 'installed', progress: 100 }))
+      notify('Aggiornamento installato. Riavvia l’app se resta aperta.')
+    } catch (error) {
+      setUpdateState((state) => ({
+        ...state,
+        phase: 'error',
+        error: formatUpdaterError(error),
+      }))
+    }
   }
   async function handleImport(file?: File) {
     if (!file) return
 
     try {
-      const payload = parseBackupPayload(JSON.parse(await file.text()))
+      const payload = appStorage.parseBackupPayload(JSON.parse(await file.text()))
       setPendingImport({ fileName: file.name, payload })
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Import non riuscito.')
@@ -246,7 +419,7 @@ function App() {
   async function confirmImport() {
     if (!pendingImport) return
 
-    await importBackup(pendingImport.payload)
+    await appStorage.importBackup(pendingImport.payload)
     setPendingImport(null)
     notify('Backup importato.')
   }
@@ -260,32 +433,38 @@ function App() {
       targetDate: today,
     })
   }
-  const contentProps = { activeView, annualMovements, goals, profile, categories, theme, fiscalEstimate, selectedYear,
+  const contentProps = { activeView, annualMovements, goals, profile, categories, deadlines, preferences, theme, fiscalEstimate, selectedYear,
     drawerOpen, movementType, movementForm, movementErrors, goalForm, goalErrors, editingMovementId, editingGoalId,
     setMovementForm, setGoalForm, setType, setDrawerOpen, setEditingMovementId, setMovementErrors,
+    diagnostics, updateState,
     onSelectView: selectView, onNewMovement: openNewMovement, onEditMovement: editMovement, onDeleteMovement: removeMovement,
     onSubmitMovement: submitMovement, onSubmitGoal: submitGoal, onCancelGoalEdit: cancelGoalEdit, onEditGoal: editGoal,
-    onDeleteGoal: removeGoal, onExport: handleExport, onImport: () => backupInputRef.current?.click(), onProfileChange: updateProfile,
+    onDeleteGoal: removeGoal, onExport: handleExport, onImport: () => backupInputRef.current?.click(), onCheckUpdates: handleCheckUpdates,
+    onInstallUpdate: handleInstallUpdate, onProfileChange: updateProfile,
+    onSavePreferences: savePreferences, onAddDeadline: addDeadline, onUpdateDeadline: updateDeadline,
+    onDeleteDeadline: removeDeadline, onToggleDeadlineOccurrence: toggleDeadlineOccurrence,
     onCreateCategory: createCategory, onDeleteCategory: removeCategory, onThemeChange: setTheme,
-    onRestartSetup: () => saveProfile({ ...profile, setupCompleted: false }) }
+    onRestartSetup: () => appStorage.saveProfile({ ...profile, setupCompleted: false }) }
 
   if (!appData) {
-    return <main className="loading">Caricamento dati locali...</main>
+    return <FluentProvider theme={fluentTheme}><main className="loading">Caricamento dati locali...</main></FluentProvider>
   }
 
   if (!profile.setupCompleted) {
     return (
-      <SetupView profile={profile} onComplete={async (configuredProfile) => {
-          await saveProfile({ ...configuredProfile, setupCompleted: true })
+      <FluentProvider theme={fluentTheme}><SetupView profile={profile} onComplete={async (configuredProfile) => {
+          await appStorage.saveProfile({ ...configuredProfile, setupCompleted: true })
           notify('Profilo iniziale configurato.')
-        }} />
+        }} /></FluentProvider>
     )
   }
 
   return (
-    <AppFrame activeView={activeView} selectedYear={selectedYear} availableYears={availableYears} profile={profile}
+    <FluentProvider theme={fluentTheme}>
+    <AppFrame activeView={activeView} selectedYear={selectedYear} availableYears={availableYears}
+      movements={annualMovements} diagnostics={diagnostics}
       toast={toast} backupInputRef={backupInputRef} onSelectView={selectView}
-      onSetYear={(year) => setSelectedYear(clampYear(year))} onExport={handleExport} onImportFile={handleImport}
+      onSetYear={(year) => setSelectedYear(clampYear(year))} onNewMovement={openNewMovement} onExport={handleExport} onImportFile={handleImport}
       modals={
         pendingImport ? (
           <ImportPreviewDialog pendingImport={pendingImport} onCancel={() => setPendingImport(null)} onConfirm={confirmImport} />
@@ -293,6 +472,7 @@ function App() {
       }>
       <AppContent {...contentProps} />
     </AppFrame>
+    </FluentProvider>
   )
 }
 

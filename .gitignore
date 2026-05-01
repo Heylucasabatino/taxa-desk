@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local QA/build artifacts
+/.playwright-mcp/
+/release-portable/
+/*.png
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

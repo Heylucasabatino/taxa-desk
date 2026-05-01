@@ -1,8 +1,10 @@
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import { useEffect, useRef, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { Category } from '../constants/categories'
 import type { ThemePreference } from '../hooks/useTheme'
 import type { ActiveView } from '../lib/routing'
-import type { FiscalEstimate, Goal, Movement, MovementType, TaxProfile } from '../lib/finance'
+import type { AppPreferences, FiscalEstimate, Goal, Movement, MovementType, PersonalDeadline, TaxProfile } from '../lib/finance'
+import type { PortableDiagnostics } from '../lib/storage'
+import type { UpdateState } from '../lib/updates'
 import { AnalyticsView } from '../views/AnalyticsView'
 import { BackupView } from '../views/BackupView'
 import { DeadlinesView } from '../views/DeadlinesView'
@@ -18,11 +20,15 @@ export function ViewSwitch({
   activeView,
   annualMovements,
   goals,
+  deadlines,
+  preferences,
   profile,
   categories,
   theme,
   fiscalEstimate,
   selectedYear,
+  diagnostics,
+  updateState,
   drawerOpen,
   movementType,
   movementForm,
@@ -48,7 +54,14 @@ export function ViewSwitch({
   onDeleteGoal,
   onExport,
   onImport,
+  onCheckUpdates,
+  onInstallUpdate,
   onProfileChange,
+  onSavePreferences,
+  onAddDeadline,
+  onUpdateDeadline,
+  onDeleteDeadline,
+  onToggleDeadlineOccurrence,
   onCreateCategory,
   onDeleteCategory,
   onThemeChange,
@@ -57,11 +70,15 @@ export function ViewSwitch({
   activeView: ActiveView
   annualMovements: Movement[]
   goals: Goal[]
+  deadlines: PersonalDeadline[]
+  preferences: AppPreferences
   profile: TaxProfile
   categories: Category[]
   theme: ThemePreference
   fiscalEstimate: FiscalEstimate
   selectedYear: number
+  diagnostics: PortableDiagnostics | null
+  updateState: UpdateState
   drawerOpen: boolean
   movementType: MovementType
   movementForm: MovementFormState
@@ -87,23 +104,36 @@ export function ViewSwitch({
   onDeleteGoal: (id?: string) => void
   onExport: () => void
   onImport: () => void
+  onCheckUpdates: () => void
+  onInstallUpdate: () => void
   onProfileChange: (field: keyof TaxProfile, value: string | boolean) => void
+  onSavePreferences: (preferences: AppPreferences) => Promise<void>
+  onAddDeadline: (deadline: PersonalDeadline) => Promise<void>
+  onUpdateDeadline: (deadline: PersonalDeadline) => Promise<void>
+  onDeleteDeadline: (id?: string) => Promise<void>
+  onToggleDeadlineOccurrence: (deadline: PersonalDeadline, occurrenceDate: string) => Promise<void>
   onCreateCategory: (type: MovementType, name: string) => void
   onDeleteCategory: (id?: string) => void
   onThemeChange: (theme: ThemePreference) => void
   onRestartSetup: () => void
 }) {
+  const shellRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    shellRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [activeView])
+
   return (
-    <div className={activeView === 'movements' ? 'content-shell' : 'content-shell single'}>
+    <div ref={shellRef} className={activeView === 'movements' ? 'content-shell' : 'content-shell single'}>
       <section className="main-ledger">
-        {activeView === 'overview' ? <OverviewView movements={annualMovements} goals={goals} estimate={fiscalEstimate} onGoToMovements={onNewMovement} onGoToReserves={() => onSelectView('reserves')} onGoToGoals={() => onSelectView('goals')} onGoToProfile={() => onSelectView('profile')} /> : null}
-        {activeView === 'movements' ? <MovementsView movements={annualMovements} categories={categories} onDelete={onDeleteMovement} onEdit={onEditMovement} onNew={onNewMovement} onExport={onExport} onImport={onImport} /> : null}
+        {activeView === 'overview' ? <OverviewView movements={annualMovements} goals={goals} profile={profile} estimate={fiscalEstimate} preferences={preferences} diagnostics={diagnostics} onSavePreferences={onSavePreferences} onGoToMovements={onNewMovement} onGoToReserves={() => onSelectView('reserves')} onGoToGoals={() => onSelectView('goals')} onGoToProfile={() => onSelectView('profile')} /> : null}
+        {activeView === 'movements' ? <MovementsView movements={annualMovements} categories={categories} onDelete={onDeleteMovement} onEdit={onEditMovement} onNew={onNewMovement} /> : null}
         {activeView === 'reserves' ? <ReservesView estimate={fiscalEstimate} profile={profile} /> : null}
         {activeView === 'goals' ? <GoalsView goals={goals} profile={profile} goalForm={goalForm} goalErrors={goalErrors} setGoalForm={setGoalForm} editingGoalId={editingGoalId} onCancelEdit={onCancelGoalEdit} onEditGoal={onEditGoal} onDeleteGoal={onDeleteGoal} onSubmitGoal={onSubmitGoal} /> : null}
-        {activeView === 'deadlines' ? <DeadlinesView selectedYear={selectedYear} /> : null}
-        {activeView === 'analytics' ? <AnalyticsView movements={annualMovements} /> : null}
+        {activeView === 'deadlines' ? <DeadlinesView deadlines={deadlines} selectedYear={selectedYear} onAddDeadline={onAddDeadline} onUpdateDeadline={onUpdateDeadline} onDeleteDeadline={onDeleteDeadline} onToggleOccurrence={onToggleDeadlineOccurrence} /> : null}
+        {activeView === 'analytics' ? <AnalyticsView movements={annualMovements} estimate={fiscalEstimate} preferences={preferences} onSavePreferences={onSavePreferences} /> : null}
         {activeView === 'profile' ? <ProfileView profile={profile} categories={categories} theme={theme} onChange={onProfileChange} onCreateCategory={onCreateCategory} onDeleteCategory={onDeleteCategory} onThemeChange={onThemeChange} onRestartSetup={onRestartSetup} /> : null}
-        {activeView === 'backup' ? <BackupView onExport={onExport} onImport={onImport} /> : null}
+        {activeView === 'backup' ? <BackupView diagnostics={diagnostics} updateState={updateState} onExport={onExport} onImport={onImport} onCheckUpdates={onCheckUpdates} onInstallUpdate={onInstallUpdate} /> : null}
       </section>
       {activeView === 'movements' && drawerOpen ? (
         <MovementDrawer movementType={movementType} movementForm={movementForm} isEditing={Boolean(editingMovementId)} categories={categories} errors={movementErrors} setMovementForm={setMovementForm} setType={setType} onClose={() => {

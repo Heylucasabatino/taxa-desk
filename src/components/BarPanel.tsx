@@ -25,7 +25,9 @@ export function BarPanel({
           </div>
         ))
       ) : (
-        <p className="empty-text">Nessun dato disponibile.</p>
+        <div className="analysis-empty-row">
+          <span>Nessun movimento nell'anno selezionato</span>
+        </div>
       )}
     </div>
   )

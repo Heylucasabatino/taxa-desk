@@ -24,8 +24,10 @@ describe('parseBackupPayload', () => {
       settings: {},
     })
 
-    expect(payload.meta.version).toBe(3)
+    expect(payload.meta.version).toBe(4)
     expect(payload.categories).toEqual(defaultCategories)
+    expect(payload.deadlines).toEqual([])
+    expect(payload.preferences.safetyThresholdAmount).toBeNull()
     expect(payload.movements[0].category).toBe('Altro')
   })
 

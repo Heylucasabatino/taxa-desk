@@ -1,0 +1,74 @@
+import { getVersion } from '@tauri-apps/api/app'
+import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updater'
+
+export type UpdatePhase =
+  | 'idle'
+  | 'checking'
+  | 'none'
+  | 'available'
+  | 'backup'
+  | 'downloading'
+  | 'installing'
+  | 'installed'
+  | 'unsupported'
+  | 'error'
+
+export type UpdateState = {
+  phase: UpdatePhase
+  currentVersion: string
+  availableVersion?: string
+  changelog?: string
+  backupPath?: string
+  progress?: number
+  error?: string
+}
+
+export const initialUpdateState: UpdateState = {
+  phase: 'idle',
+  currentVersion: '0.1.2',
+}
+
+export function isTauriRuntime() {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
+
+export async function readInstalledVersion() {
+  if (!isTauriRuntime()) return initialUpdateState.currentVersion
+
+  return getVersion()
+}
+
+export async function checkForAppUpdate() {
+  if (!isTauriRuntime()) {
+    return null
+  }
+
+  return check({ timeout: 30_000 })
+}
+
+export function toUpdateState(update: Update, currentVersion: string): UpdateState {
+  return {
+    phase: 'available',
+    currentVersion,
+    availableVersion: update.version,
+    changelog: update.body,
+  }
+}
+
+export function formatUpdaterError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (/network|fetch|dns|timed out|timeout|connection|offline/i.test(message)) {
+    return 'Errore di rete: verifica la connessione e riprova.'
+  }
+
+  return message || 'Controllo aggiornamenti non riuscito.'
+}
+
+export function getDownloadProgress(event: DownloadEvent, downloadedBytes: number) {
+  if (event.event === 'Progress') {
+    return downloadedBytes + event.data.chunkLength
+  }
+
+  return downloadedBytes
+}

@@ -37,7 +37,7 @@ export function GoalRows({
             <div className="goal-mark">
               <GoalIcon size={22} />
             </div>
-            <div>
+            <div className="goal-title-cell">
               <strong>{goal.name}</strong>
               <span>Obiettivo principale</span>
             </div>

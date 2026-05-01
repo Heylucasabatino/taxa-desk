@@ -1,6 +1,8 @@
-# Webapp Gestione Fondi e Tasse
+# Taxa Desk
 
-Applicazione locale React/Vite per tenere sotto controllo incassi, spese, accantonamenti fiscali/previdenziali e obiettivi di risparmio. E pensata come strumento operativo personale, non come gestionale contabile completo.
+Il tuo spazio locale per entrate, tasse e scadenze.
+
+Applicazione locale React/Vite/Tauri per tenere sotto controllo incassi, spese, accantonamenti fiscali/previdenziali, scadenze e obiettivi di risparmio. E pensata come strumento operativo personale, non come gestionale contabile completo.
 
 ## Funzioni principali
 
@@ -17,7 +19,17 @@ Le cifre sono stime orientative basate sui dati inseriti e sul profilo configura
 
 ## Dati locali e backup
 
-I dati restano nel browser, in IndexedDB tramite Dexie, nel database locale `funds-and-taxes`. Non c'e sincronizzazione cloud o backend remoto.
+La build web resta compatibile con IndexedDB tramite Dexie, nel database locale `funds-and-taxes`. Non c'e sincronizzazione cloud o backend remoto.
+
+La build desktop Tauri usa invece un database SQLite locale accanto all'eseguibile:
+
+```text
+Taxa Desk/
+  Taxa Desk.exe
+  data/fondi-e-tasse.sqlite
+  backups/*.json
+  logs/app.log
+```
 
 Il backup esporta un file JSON con movimenti, obiettivi, impostazioni fiscali e metadati di versione. L'importazione di un backup sostituisce movimenti e obiettivi locali dopo conferma; le impostazioni fiscali vengono aggiornate dal file importato.
 
@@ -52,6 +64,20 @@ Anteprima locale della build:
 ```bash
 npm run preview
 ```
+
+Avvia la shell desktop Tauri in sviluppo:
+
+```bash
+npm run tauri:dev
+```
+
+Compila la build desktop:
+
+```bash
+npm run tauri:build
+```
+
+La build Tauri richiede la toolchain Rust installata. Su Windows serve un sistema moderno con Microsoft Edge WebView2 disponibile, normalmente presente su Windows 11 e sulle installazioni Windows 10 recenti.
 
 ## Limitazioni attuali
 

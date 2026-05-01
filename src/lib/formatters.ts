@@ -16,7 +16,7 @@ export function statusLabel(status: MovementStatus) {
 
 export function viewTitle(view: ActiveView) {
   return {
-    overview: 'Fondi e tasse',
+    overview: 'Taxa Desk',
     movements: 'Movimenti',
     reserves: 'Accantonamenti',
     goals: 'Obiettivi',

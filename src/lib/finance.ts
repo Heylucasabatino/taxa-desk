@@ -53,6 +53,24 @@ export type Goal = {
   targetDate: string
 }
 
+export type DeadlineCategory = 'tax' | 'enpap' | 'personal' | 'payment' | 'document'
+
+export type DeadlineRecurrence = 'none' | 'monthly' | 'yearly'
+
+export type PersonalDeadline = {
+  id?: string
+  title: string
+  date: string
+  category: DeadlineCategory
+  recurrence: DeadlineRecurrence
+  notes?: string
+  completedOccurrences?: string[]
+}
+
+export type AppPreferences = {
+  safetyThresholdAmount?: number | null
+}
+
 export type FiscalEstimate = {
   grossIncome: number
   expenses: number

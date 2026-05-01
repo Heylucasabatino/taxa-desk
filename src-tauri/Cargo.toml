@@ -1,0 +1,24 @@
+[package]
+name = "fondi-e-tasse"
+version = "0.1.2"
+description = "App desktop portable per entrate, tasse e scadenze"
+authors = ["Taxa Desk"]
+edition = "2021"
+
+[lib]
+name = "fondi_e_tasse_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2"
