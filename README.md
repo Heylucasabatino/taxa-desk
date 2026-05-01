@@ -39,6 +39,10 @@ Non è un gestionale contabile completo, non invia dichiarazioni fiscali, non ge
 - Scadenze operative e promemoria locali.
 - Backup/import JSON e aggiornamenti assistiti da GitHub Releases.
 
+## Avvertenza fiscale
+
+Taxa Desk non è un gestionale contabile completo e non fornisce consulenza fiscale. Le cifre sono stime basate sui dati inseriti e sul profilo configurato. Scadenze, aliquote, minimi, proroghe e requisiti possono cambiare: prima di prendere decisioni o fare versamenti verifica sempre con fonti ufficiali e con il tuo consulente.
+
 ## Download
 
 La release pubblica più recente è disponibile nella pagina:
@@ -113,10 +117,6 @@ npm run tauri:build
 ```
 
 La build Tauri richiede la toolchain Rust e, su Windows, Microsoft Edge WebView2.
-
-## Avvertenza fiscale
-
-Taxa Desk non è un gestionale contabile completo e non fornisce consulenza fiscale. Le cifre sono stime basate sui dati inseriti e sul profilo configurato. Scadenze, aliquote, minimi, proroghe e requisiti possono cambiare: prima di prendere decisioni o fare versamenti verifica sempre con fonti ufficiali e con il tuo consulente.
 
 ## Licenza
 

@@ -51,7 +51,15 @@ Se elimini manualmente la cartella locale dell’app, potresti eliminare anche d
 
 ### Windows blocca l’app scaricata
 
-Nelle build beta Windows potrebbe mostrare un avviso SmartScreen. Verifica sempre di aver scaricato l’installer dalla pagina ufficiale GitHub Releases del progetto.
+Nelle build beta Windows può mostrare un avviso SmartScreen ("Windows ha protetto il PC") perché l’installer non è ancora firmato con un certificato Authenticode commerciale.
+
+Per procedere:
+
+1. Verifica di aver scaricato l’installer dalla pagina ufficiale [GitHub Releases](https://github.com/Heylucasabatino/taxa-desk/releases/latest).
+2. Nell’avviso SmartScreen clicca **Ulteriori informazioni**.
+3. Clicca **Esegui comunque**.
+
+Se hai dubbi sull’origine del file, non eseguirlo: scaricalo nuovamente dalla pagina ufficiale.
 
 ### I dati non compaiono dopo un aggiornamento
 

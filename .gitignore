@@ -17,6 +17,9 @@ dist-ssr
 /release-portable/
 /*.png
 
+# Internal product notes (kept local, not published)
+docs/product-positioning.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

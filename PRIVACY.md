@@ -1,5 +1,7 @@
 # Privacy
 
+_Ultimo aggiornamento: maggio 2026_
+
 Taxa Desk è progettato come applicazione desktop locale e privacy-first.
 
 ## Dati trattati localmente
