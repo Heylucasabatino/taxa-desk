@@ -1,0 +1,37 @@
+name: Richiesta funzione
+description: Proponi un miglioramento per Taxa Desk
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Descrivi il bisogno pratico. Evita di allegare dati fiscali reali o backup.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema da risolvere
+      description: Quale attivita' diventa piu' semplice con questa funzione?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Soluzione proposta
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Movimenti
+        - Accantonamenti
+        - Scadenze
+        - Analisi
+        - Profilo fiscale
+        - Backup e aggiornamenti
+        - Installazione
+        - Altro
+    validations:
+      required: true

@@ -1,0 +1,53 @@
+name: Segnalazione bug
+description: Segnala un problema riproducibile in Taxa Desk
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la segnalazione. Non includere dati fiscali reali, backup completi o contenuti del database SQLite.
+  - type: input
+    id: version
+    attributes:
+      label: Versione Taxa Desk
+      placeholder: "es. 0.1.2"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Versione Windows
+      placeholder: "es. Windows 11 23H2"
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrizione
+      description: Cosa succede?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passaggi per riprodurre
+      placeholder: |
+        1. Apri ...
+        2. Clicca ...
+        3. Osserva ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento atteso
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log o screenshot depurati
+      description: Inserisci solo informazioni senza dati personali o fiscali.
+    validations:
+      required: false
