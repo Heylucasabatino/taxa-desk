@@ -2,12 +2,14 @@ use chrono::{Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, fs, io::Write, path::PathBuf, process::Command, sync::Mutex};
+use std::{collections::HashMap, fs, io::Write, path::PathBuf, process::Command, sync::Mutex, time::Duration};
 use tauri::Manager;
 use uuid::Uuid;
 
 const PORTABLE_MANIFEST_URL: &str =
     "https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/portable-manifest.json";
+const UPDATE_HTTP_TIMEOUT_SECONDS: u64 = 120;
+const UPDATE_HTTP_USER_AGENT: &str = "Taxa Desk updater";
 
 // Same minisign public key used by the Tauri updater (see
 // src-tauri/tauri.conf.json -> plugins.updater.pubkey, base64-decoded).
@@ -1241,7 +1243,10 @@ fn install_portable_update(
 }
 
 fn fetch_portable_manifest() -> Result<Option<PortableUpdateManifest>, String> {
-    let response = reqwest::blocking::get(PORTABLE_MANIFEST_URL).map_err(to_message)?;
+    let response = update_http_client()?
+        .get(PORTABLE_MANIFEST_URL)
+        .send()
+        .map_err(to_message)?;
 
     if response.status().as_u16() == 404 {
         return Ok(None);
@@ -1264,7 +1269,10 @@ fn download_portable_package(
     paths: &PortablePaths,
     update: &PortableUpdateInfo,
 ) -> Result<PathBuf, String> {
-    let response = reqwest::blocking::get(&update.url).map_err(to_message)?;
+    let response = update_http_client()?
+        .get(&update.url)
+        .send()
+        .map_err(to_message)?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -1290,6 +1298,14 @@ fn download_portable_package(
     fs::write(&package_path, &bytes).map_err(to_message)?;
 
     Ok(package_path)
+}
+
+fn update_http_client() -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(UPDATE_HTTP_TIMEOUT_SECONDS))
+        .user_agent(UPDATE_HTTP_USER_AGENT)
+        .build()
+        .map_err(to_message)
 }
 
 fn verify_portable_signature(bytes: &[u8], signature_text: &str) -> Result<(), String> {

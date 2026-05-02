@@ -15,8 +15,8 @@ export function AppTitleBar() {
   return (
     <header className="app-titlebar">
       <div className="titlebar-app" data-tauri-drag-region>
-        <div className="titlebar-mark" aria-hidden="true">FT</div>
-        <span data-tauri-drag-region>Fondi e Tasse</span>
+        <div className="titlebar-mark" aria-hidden="true">TD</div>
+        <span data-tauri-drag-region>Taxa Desk</span>
       </div>
       <div className="titlebar-spacer" data-tauri-drag-region />
       <div className="window-controls">
