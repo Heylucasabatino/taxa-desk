@@ -22,21 +22,74 @@ struct Args {
 }
 
 fn main() {
-    let result = run();
-
-    if let Err(error) = result {
-        let fallback_log = env::temp_dir().join("taxa-desk-updater.log");
-        let _ = append_log(&fallback_log, &format!("update failed: {error}"));
+    match parse_args() {
+        Ok(args) => match run_update(&args) {
+            Ok(()) => {
+                let _ = clear_last_error(&args.app_dir);
+                let _ = remove_package(&args.package, &args.log);
+            }
+            Err(error) => {
+                let _ = write_last_error(&args.app_dir, &error);
+                let _ = append_log(&args.log, &format!("update failed: {error}"));
+            }
+        },
+        Err(error) => {
+            let fallback_log = env::temp_dir().join("taxa-desk-updater.log");
+            let _ = append_log(&fallback_log, &format!("update failed (args): {error}"));
+        }
     }
 }
 
-fn run() -> Result<(), String> {
-    let args = parse_args()?;
+fn run_update(args: &Args) -> Result<(), String> {
     append_log(&args.log, "portable updater started")?;
     wait_for_process_exit(args.pid, &args.log)?;
-    apply_update(&args)?;
+    apply_update(args)?;
     append_log(&args.log, "portable update applied")?;
-    reopen_app(&args)?;
+    reopen_app(args)?;
+
+    Ok(())
+}
+
+fn updates_dir(app_dir: &Path) -> PathBuf {
+    app_dir.join(".updates")
+}
+
+fn last_error_path(app_dir: &Path) -> PathBuf {
+    updates_dir(app_dir).join("last-error.txt")
+}
+
+fn write_last_error(app_dir: &Path, message: &str) -> Result<(), String> {
+    let dir = updates_dir(app_dir);
+    fs::create_dir_all(&dir).map_err(to_message)?;
+    let timestamp = Utc::now().to_rfc3339();
+    fs::write(
+        last_error_path(app_dir),
+        format!("{timestamp}\n{message}\n"),
+    )
+    .map_err(to_message)
+}
+
+fn clear_last_error(app_dir: &Path) -> Result<(), String> {
+    let path = last_error_path(app_dir);
+    if path.exists() {
+        fs::remove_file(path).map_err(to_message)?;
+    }
+    Ok(())
+}
+
+fn remove_package(package: &Path, log_path: &Path) -> Result<(), String> {
+    if !package.exists() {
+        return Ok(());
+    }
+
+    match fs::remove_file(package) {
+        Ok(()) => {
+            let _ = append_log(log_path, &format!("package removed: {}", package.display()));
+        }
+        Err(error) => {
+            let _ = append_log(log_path, &format!("package cleanup failed: {error}"));
+        }
+    }
 
     Ok(())
 }

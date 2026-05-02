@@ -12,7 +12,7 @@ import { useToast } from './hooks/useToast'
 import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type AppPreferences, type Goal, type Movement, type MovementType, type PersonalDeadline, type TaxProfile } from './lib/finance'
 import { type ActiveView } from './lib/routing'
 import { appStorage, type PortableDiagnostics } from './lib/storage'
-import { checkForAppUpdate, checkForPortableUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, installPortableUpdate, isTauriRuntime, openFeedbackPage, openLatestReleasePage, readInstalledVersion, toPortableUpdateState, toUpdateState, type PortableUpdateInfo, type UpdateState } from './lib/updates'
+import { checkForAppUpdate, checkForPortableUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, installPortableUpdate, isTauriRuntime, openFeedbackPage, openLatestReleasePage, readInstalledVersion, readLastUpdaterError, toPortableUpdateState, toUpdateState, type PortableUpdateInfo, type UpdateState } from './lib/updates'
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
 import type { Update } from '@tauri-apps/plugin-updater'
@@ -114,6 +114,21 @@ function App() {
       active = false
     }
   }, [appData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    readLastUpdaterError().then((entry) => {
+      if (cancelled || !entry) return
+      notify(`L'aggiornamento precedente non e' riuscito: ${entry.message}`)
+    }).catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+    // Run once on mount: consume the marker file written by the portable updater.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   function setType(type: MovementType) {
     setMovementType(type)
     setMovementErrors({})

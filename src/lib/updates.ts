@@ -76,6 +76,29 @@ export async function checkForPortableUpdate(currentVersion: string) {
   return invoke<PortableUpdateInfo | null>('check_portable_update', { currentVersion })
 }
 
+export type LastUpdaterError = {
+  reportedAt?: string
+  message: string
+}
+
+export async function readLastUpdaterError(): Promise<LastUpdaterError | null> {
+  if (!isTauriRuntime()) return null
+
+  const raw = await invoke<string | null>('read_last_update_error')
+  if (!raw) return null
+
+  const lines = raw.split(/\r?\n/)
+  const first = lines[0] ?? ''
+  const rest = lines.slice(1).join('\n').trim()
+  const looksLikeTimestamp = /^\d{4}-\d{2}-\d{2}T/.test(first)
+
+  if (looksLikeTimestamp && rest.length > 0) {
+    return { reportedAt: first, message: rest }
+  }
+
+  return { message: raw.trim() }
+}
+
 export async function installPortableUpdate(update: PortableUpdateInfo) {
   if (!isTauriRuntime()) {
     throw new Error('Aggiornamento portable disponibile solo nell’app desktop.')

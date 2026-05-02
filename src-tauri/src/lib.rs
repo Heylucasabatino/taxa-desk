@@ -1181,6 +1181,27 @@ fn check_portable_update(
 }
 
 #[tauri::command]
+fn read_last_update_error(
+    state: tauri::State<'_, DbState>,
+) -> Result<Option<String>, String> {
+    let path = state.paths.exe_dir.join(".updates").join("last-error.txt");
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&path).map_err(to_message)?;
+    let _ = fs::remove_file(&path);
+    let trimmed = content.trim();
+
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(trimmed.to_string()))
+}
+
+#[tauri::command]
 fn install_portable_update(
     app: tauri::AppHandle,
     state: tauri::State<'_, DbState>,
@@ -1368,6 +1389,7 @@ pub fn run() {
             create_auto_backup,
             check_portable_update,
             install_portable_update,
+            read_last_update_error,
             window_minimize,
             window_toggle_maximize,
             window_close,
