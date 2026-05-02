@@ -1347,6 +1347,7 @@ fn launch_portable_updater(
 
 fn find_portable_updater(paths: &PortablePaths) -> Result<PathBuf, String> {
     let candidates = [
+        paths.exe_dir.join("Taxa Desk Agent.exe"),
         paths.exe_dir.join("Taxa Desk Updater.exe"),
         paths.exe_dir.join("taxa-desk-updater.exe"),
     ];
@@ -1354,7 +1355,7 @@ fn find_portable_updater(paths: &PortablePaths) -> Result<PathBuf, String> {
     candidates
         .into_iter()
         .find(|path| path.exists())
-        .ok_or_else(|| "Taxa Desk Updater.exe non trovato nella cartella dell’app.".to_string())
+        .ok_or_else(|| "Helper aggiornamenti Taxa Desk non trovato nella cartella dell’app.".to_string())
 }
 
 fn is_version_newer(candidate: &str, current: &str) -> bool {

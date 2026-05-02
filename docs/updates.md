@@ -48,6 +48,7 @@ Lo ZIP update contiene solo file applicativi sotto `app/`:
 ```text
 app/
   Taxa Desk.exe
+  Taxa Desk Agent.exe
   LEGGIMI.txt
 ```
 
@@ -59,6 +60,7 @@ La cartella portable completa per primo download contiene:
 Taxa Desk/
   Taxa Desk.exe
   Taxa Desk Updater.exe
+  Taxa Desk Agent.exe
   LEGGIMI.txt
   data/
   backups/
@@ -205,4 +207,4 @@ Test manuali richiesti:
 
 Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla piattaforma. Su Windows con target NSIS usa l’installer firmato e `installMode: "passive"`.
 
-La distribuzione portable non usa il plugin Tauri updater per sostituire la cartella: usa `Taxa Desk Updater.exe`, un processo esterno che può aggiornare l’eseguibile dopo la chiusura dell’app.
+La distribuzione portable non usa il plugin Tauri updater per sostituire la cartella: usa un helper esterno che può aggiornare l’eseguibile dopo la chiusura dell’app. Le nuove build preferiscono `Taxa Desk Agent.exe`; `Taxa Desk Updater.exe` resta nella cartella completa per compatibilità con build già distribuite.

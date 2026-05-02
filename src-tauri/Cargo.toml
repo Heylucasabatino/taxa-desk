@@ -1,6 +1,6 @@
 [package]
 name = "fondi-e-tasse"
-version = "0.1.5"
+version = "0.1.6"
 description = "App desktop portable per entrate, tasse e scadenze"
 authors = ["Taxa Desk"]
 edition = "2021"

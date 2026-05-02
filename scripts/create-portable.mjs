@@ -56,10 +56,12 @@ mkdirSync(join(appDir, 'backups'), { recursive: true })
 mkdirSync(join(appDir, 'logs'), { recursive: true })
 copyFileSync(appBinary, join(appDir, 'Taxa Desk.exe'))
 copyFileSync(updaterBinary, join(appDir, 'Taxa Desk Updater.exe'))
+copyFileSync(updaterBinary, join(appDir, 'Taxa Desk Agent.exe'))
 writeFileSync(join(appDir, 'LEGGIMI.txt'), readmeText(version), 'utf8')
 
 mkdirSync(updateAppDir, { recursive: true })
 copyFileSync(appBinary, join(updateAppDir, 'Taxa Desk.exe'))
+copyFileSync(updaterBinary, join(updateAppDir, 'Taxa Desk Agent.exe'))
 writeFileSync(join(updateAppDir, 'LEGGIMI.txt'), readmeText(version), 'utf8')
 
 compressArchive(appDir, portableZipPath, { includeRoot: true })
