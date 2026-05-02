@@ -144,7 +144,7 @@ export function BackupView({
           </div>
           <div>
             <dt>Nuova versione</dt>
-            <dd>{updateState.availableVersion ?? 'Non verificata'}</dd>
+            <dd>{getAvailableVersionLabel(updateState)}</dd>
           </div>
           <div>
             <dt>Backup pre-update</dt>
@@ -181,6 +181,13 @@ export function BackupView({
       </section>
     </section>
   )
+}
+
+function getAvailableVersionLabel(updateState: UpdateState) {
+  if (updateState.availableVersion) return updateState.availableVersion
+  if (updateState.phase === 'none') return 'Nessuna'
+  if (updateState.phase === 'checking') return 'Verifica in corso'
+  return 'Non verificata'
 }
 
 function getUpdateLabel(updateState: UpdateState) {

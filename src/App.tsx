@@ -357,7 +357,11 @@ function App() {
       const update = await checkForAppUpdate()
 
       if (!update) {
-        setUpdateState({ phase: 'none', currentVersion })
+        setUpdateState({
+          phase: 'none',
+          currentVersion,
+          channel: diagnostics ? 'portable' : 'installer',
+        })
         notify('Nessun aggiornamento disponibile.')
         return
       }
