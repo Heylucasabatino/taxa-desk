@@ -2,7 +2,15 @@ use chrono::{Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, fs, io::Write, path::PathBuf, process::Command, sync::Mutex, time::Duration};
+use std::{
+    collections::HashMap,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Mutex,
+    time::Duration,
+};
 use tauri::Manager;
 use uuid::Uuid;
 
@@ -145,6 +153,8 @@ struct BackupPayload {
     deadlines: Vec<PersonalDeadline>,
     #[serde(default = "default_preferences")]
     preferences: AppPreferences,
+    #[serde(skip)]
+    source_has_profile: bool,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -895,6 +905,7 @@ fn build_backup_payload(conn: &Connection) -> rusqlite::Result<BackupPayload> {
         categories: read_categories(conn)?,
         deadlines: read_deadlines(conn)?,
         preferences: read_preferences(conn)?.unwrap_or_else(default_preferences),
+        source_has_profile: true,
     })
 }
 
@@ -934,15 +945,25 @@ fn parse_backup_payload(content: &str) -> Result<BackupPayload, String> {
     normalize_backup_payload(candidate)
 }
 
-fn deserialize_backup_value<T: DeserializeOwned>(
-    value: &serde_json::Value,
-) -> Result<T, String> {
+fn deserialize_backup_value<T: DeserializeOwned>(value: &serde_json::Value) -> Result<T, String> {
     serde_json::from_value(value.clone())
         .map_err(|_| "Backup JSON non valido o non compatibile.".to_string())
 }
 
 fn normalize_backup_payload(candidate: RawBackupPayload) -> Result<BackupPayload, String> {
     let today = Utc::now().date_naive().to_string();
+
+    let source_has_movements = candidate.movements.is_some();
+    let source_has_profile = if source_has_movements {
+        candidate.settings.is_some()
+    } else {
+        candidate.profile.is_some() || candidate.settings.is_some()
+    };
+    let raw_settings = if source_has_movements {
+        candidate.settings
+    } else {
+        candidate.profile.or(candidate.settings)
+    };
 
     let movements = if let Some(raw_movements) = candidate.movements {
         raw_movements
@@ -980,7 +1001,7 @@ fn normalize_backup_payload(candidate: RawBackupPayload) -> Result<BackupPayload
             .into_iter()
             .map(|goal| normalize_goal(goal, &today))
             .collect(),
-        settings: normalize_settings(candidate.profile.or(candidate.settings)),
+        settings: normalize_settings(raw_settings),
         categories: normalize_categories(candidate.categories),
         deadlines: candidate
             .deadlines
@@ -989,6 +1010,7 @@ fn normalize_backup_payload(candidate: RawBackupPayload) -> Result<BackupPayload
             .map(|deadline| normalize_deadline(deadline, &today))
             .collect(),
         preferences: normalize_preferences(candidate.preferences),
+        source_has_profile,
     })
 }
 
@@ -1112,7 +1134,7 @@ fn validate_backup_payload(payload: &BackupPayload) -> Result<(), String> {
     Ok(())
 }
 
-fn preview_backup_payload(source_path: &PathBuf, payload: &BackupPayload) -> BackupPreview {
+fn preview_backup_payload(source_path: &Path, payload: &BackupPayload) -> BackupPreview {
     BackupPreview {
         source_path: source_path.to_string_lossy().to_string(),
         exported_at: payload.meta.exported_at.clone(),
@@ -1120,7 +1142,7 @@ fn preview_backup_payload(source_path: &PathBuf, payload: &BackupPayload) -> Bac
         goals: payload.goals.len(),
         categories: payload.categories.len(),
         deadlines: payload.deadlines.len(),
-        has_profile: payload.settings.id == "default",
+        has_profile: payload.source_has_profile,
     }
 }
 
@@ -1554,9 +1576,7 @@ fn check_portable_update(
 }
 
 #[tauri::command]
-fn read_last_update_error(
-    state: tauri::State<'_, DbState>,
-) -> Result<Option<String>, String> {
+fn read_last_update_error(state: tauri::State<'_, DbState>) -> Result<Option<String>, String> {
     let path = state.paths.exe_dir.join(".updates").join("last-error.txt");
 
     if !path.exists() {
@@ -1725,7 +1745,9 @@ fn find_portable_updater(paths: &PortablePaths) -> Result<PathBuf, String> {
     candidates
         .into_iter()
         .find(|path| path.exists())
-        .ok_or_else(|| "Helper aggiornamenti Taxa Desk non trovato nella cartella dell’app.".to_string())
+        .ok_or_else(|| {
+            "Helper aggiornamenti Taxa Desk non trovato nella cartella dell’app.".to_string()
+        })
 }
 
 fn is_version_newer(candidate: &str, current: &str) -> bool {
@@ -1759,6 +1781,7 @@ fn window_close(window: tauri::Window) -> Result<(), String> {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
 
@@ -1786,6 +1809,7 @@ mod tests {
         assert_eq!(payload.movements[0].status, "collected");
         assert_eq!(payload.movements[1].movement_type, "expense");
         assert_eq!(payload.movements[1].status, "paid");
+        assert!(payload.source_has_profile);
     }
 
     #[test]
@@ -1811,11 +1835,49 @@ mod tests {
         assert!(payload.deadlines.is_empty());
         assert_eq!(payload.preferences.id.as_deref(), Some("default"));
         assert_eq!(payload.preferences.safety_threshold_amount, None);
+        assert!(payload.source_has_profile);
+    }
+
+    #[test]
+    fn parse_backup_payload_prefers_settings_for_movements_backups() {
+        let payload = parse_backup_payload(
+            r#"
+            {
+              "movements": [
+                { "date": "2026-01-01", "type": "income", "description": "Seduta", "amount": 100 }
+              ],
+              "settings": { "taxableCoefficient": 0.67 },
+              "profile": { "taxableCoefficient": 0.5 }
+            }
+            "#,
+        )
+        .expect("movement backup should use settings");
+
+        assert_eq!(payload.settings.taxable_coefficient, 0.67);
+        assert!(payload.source_has_profile);
+    }
+
+    #[test]
+    fn parse_backup_payload_marks_missing_profile_for_preview() {
+        let payload = parse_backup_payload(
+            r#"
+            {
+              "movements": [
+                { "date": "2026-01-01", "type": "income", "description": "Seduta", "amount": 100 }
+              ]
+            }
+            "#,
+        )
+        .expect("movement backup without profile should still import");
+
+        assert_eq!(payload.settings.id, "default");
+        assert!(!payload.source_has_profile);
     }
 
     #[test]
     fn parse_backup_payload_rejects_payload_without_movements() {
-        let error = parse_backup_payload(r#"{ "goals": [] }"#).expect_err("empty backup should fail");
+        let error =
+            parse_backup_payload(r#"{ "goals": [] }"#).expect_err("empty backup should fail");
 
         assert_eq!(error, "Il file non contiene movimenti importabili.");
     }
@@ -1833,7 +1895,7 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_dialog::init())?;
 
             let state = DbState::open().map_err(|message| {
-                let error = std::io::Error::new(std::io::ErrorKind::Other, message);
+                let error = std::io::Error::other(message);
                 Box::<dyn std::error::Error>::from(error)
             })?;
             app.manage(state);
