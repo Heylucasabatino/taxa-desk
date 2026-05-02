@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync, statSync } from 'node:fs'
-import { basename, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
 const root = process.cwd()
@@ -59,6 +59,7 @@ compressArchive(appDir, portableZipPath, { includeRoot: true })
 compressArchive(updateRoot, updateZipPath, { includeRoot: false })
 
 const updateHash = sha256(updateZipPath)
+const updateSignature = signFile(updateZipPath)
 const updateAssetUrl = `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(updateZipName)}`
 const manifest = {
   version,
@@ -69,6 +70,7 @@ const manifest = {
       url: updateAssetUrl,
       sha256: updateHash,
       size: statSync(updateZipPath).size,
+      signature: updateSignature,
     },
   },
 }
@@ -118,6 +120,56 @@ function compressArchive(sourcePath, destinationPath, options) {
 
 function sha256(filePath) {
   return createHash('sha256').update(readFileSync(filePath)).digest('hex')
+}
+
+function signFile(filePath) {
+  const privateKey = process.env.TAURI_SIGNING_PRIVATE_KEY
+  if (!privateKey) {
+    throw new Error(
+      'TAURI_SIGNING_PRIVATE_KEY is not set. Configure it (path or content) before running release:portable so the update package can be signed.',
+    )
+  }
+
+  const sigPath = `${filePath}.sig`
+  if (existsSync(sigPath)) {
+    rmSync(sigPath, { force: true })
+  }
+
+  const password = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+  const args = [
+    '--no-install',
+    'tauri',
+    'signer',
+    'sign',
+    '--private-key',
+    privateKey,
+    '--force',
+  ]
+
+  if (password && password.length > 0) {
+    args.push('--password', password)
+  } else {
+    args.push('--no-password')
+  }
+
+  args.push(filePath)
+
+  const result = spawnSync('npx', args, {
+    cwd: root,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+    env: process.env,
+  })
+
+  if (result.status !== 0) {
+    throw new Error('tauri signer sign failed for portable update package.')
+  }
+
+  if (!existsSync(sigPath)) {
+    throw new Error(`Signature file not produced: ${sigPath}`)
+  }
+
+  return readFileSync(sigPath, 'utf8').trim()
 }
 
 function rmInsideWorkspace(path) {

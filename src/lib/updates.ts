@@ -43,6 +43,7 @@ export type PortableUpdateInfo = {
   url: string
   sha256: string
   size?: number
+  signature: string
 }
 
 export const initialUpdateState: UpdateState = {

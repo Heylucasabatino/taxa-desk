@@ -9,6 +9,13 @@ use uuid::Uuid;
 const PORTABLE_MANIFEST_URL: &str =
     "https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/portable-manifest.json";
 
+// Same minisign public key used by the Tauri updater (see
+// src-tauri/tauri.conf.json -> plugins.updater.pubkey, base64-decoded).
+// Public-by-design: this verifies that update packages were signed with
+// the matching private key, which is never committed to the repo.
+const PORTABLE_UPDATER_PUBKEY_BASE64: &str =
+    "RWQl2pksntXCawNLu+6HF0+o6/Zw+0Byu5Qe7ymFXLtqCLyk57PonKr1";
+
 #[derive(Clone)]
 struct PortablePaths {
     exe_dir: PathBuf,
@@ -171,6 +178,7 @@ struct PortableUpdatePlatform {
     url: String,
     sha256: String,
     size: Option<u64>,
+    signature: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,6 +190,7 @@ struct PortableUpdateInfo {
     url: String,
     sha256: String,
     size: Option<u64>,
+    signature: String,
 }
 
 impl DbState {
@@ -1177,6 +1186,7 @@ fn check_portable_update(
         url: platform.url.clone(),
         sha256: platform.sha256.clone(),
         size: platform.size,
+        signature: platform.signature.clone(),
     }))
 }
 
@@ -1265,12 +1275,31 @@ fn download_portable_package(
         return Err("Verifica SHA256 del pacchetto update non riuscita.".to_string());
     }
 
+    verify_portable_signature(&bytes, &update.signature)?;
+
     let updates_dir = paths.exe_dir.join(".updates");
     fs::create_dir_all(&updates_dir).map_err(to_message)?;
     let package_path = updates_dir.join(format!("taxa-desk-{}-update.zip", update.version));
     fs::write(&package_path, &bytes).map_err(to_message)?;
 
     Ok(package_path)
+}
+
+fn verify_portable_signature(bytes: &[u8], signature_text: &str) -> Result<(), String> {
+    let trimmed = signature_text.trim();
+
+    if trimmed.is_empty() {
+        return Err("Firma del pacchetto update mancante.".to_string());
+    }
+
+    let public_key = minisign_verify::PublicKey::from_base64(PORTABLE_UPDATER_PUBKEY_BASE64)
+        .map_err(|error| format!("Chiave pubblica updater non valida: {error}"))?;
+    let signature = minisign_verify::Signature::decode(trimmed)
+        .map_err(|error| format!("Firma updater non valida: {error}"))?;
+
+    public_key
+        .verify(bytes, &signature, false)
+        .map_err(|_| "Verifica firma del pacchetto update non riuscita.".to_string())
 }
 
 fn launch_portable_updater(

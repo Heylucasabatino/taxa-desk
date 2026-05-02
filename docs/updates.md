@@ -34,11 +34,14 @@ Manifest:
     "windows-x86_64": {
       "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/v0.1.3/Taxa.Desk_0.1.3_windows_x64_update.zip",
       "sha256": "<sha256 dello zip update>",
-      "size": 1234567
+      "size": 1234567,
+      "signature": "untrusted comment: ...\\nRWQl2pksntXC...\\ntrusted comment: timestamp:...\\n..."
     }
   }
 }
 ```
+
+Il campo `signature` contiene il contenuto integrale del file `.sig` minisign generato da `tauri signer sign`. Il portable updater verifica la firma con la stessa chiave pubblica usata dal Tauri updater installer (vedi `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). Un manifest senza firma valida viene rifiutato e l'aggiornamento non parte.
 
 Lo ZIP update contiene solo file applicativi sotto `app/`:
 
@@ -62,11 +65,15 @@ Taxa Desk/
   logs/
 ```
 
-Il comando release genera entrambi:
+Il comando release genera entrambi e firma il pacchetto update:
 
 ```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY="C:\Users\<utente>\.tauri\fondi-e-tasse\updater.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<password-se-presente>"
 npm run release:portable
 ```
+
+Senza `TAURI_SIGNING_PRIVATE_KEY` impostato, lo script si interrompe prima di scrivere il manifest: i pacchetti portable non firmati non sono ammessi.
 
 ## Chiavi updater
 
