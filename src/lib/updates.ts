@@ -4,8 +4,14 @@ import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updat
 import { openUrl } from '@tauri-apps/plugin-opener'
 
 export const RELEASES_LATEST_URL = 'https://github.com/Heylucasabatino/taxa-desk/releases/latest'
-export const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL
-  ?? 'https://github.com/Heylucasabatino/taxa-desk/issues/new?template=beta_feedback.yml'
+
+const PUBLIC_FEEDBACK_FORM_URL = import.meta.env.VITE_FEEDBACK_URL as string | undefined
+const FEEDBACK_GITHUB_FALLBACK_URL =
+  'https://github.com/Heylucasabatino/taxa-desk/issues/new?template=beta_feedback.yml'
+
+export const FEEDBACK_URL = PUBLIC_FEEDBACK_FORM_URL ?? FEEDBACK_GITHUB_FALLBACK_URL
+export const FEEDBACK_GITHUB_URL = FEEDBACK_GITHUB_FALLBACK_URL
+export const FEEDBACK_HAS_PUBLIC_FORM = Boolean(PUBLIC_FEEDBACK_FORM_URL)
 
 export type UpdatePhase =
   | 'idle'
@@ -84,6 +90,10 @@ export async function openLatestReleasePage() {
 
 export async function openFeedbackPage() {
   await openExternalUrl(FEEDBACK_URL)
+}
+
+export async function openFeedbackGithubPage() {
+  await openExternalUrl(FEEDBACK_GITHUB_URL)
 }
 
 async function openExternalUrl(url: string) {

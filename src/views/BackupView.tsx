@@ -1,7 +1,7 @@
 import { ArrowDownToLine, ArrowUpFromLine, Database, DownloadCloud, ExternalLink, FolderOpen, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button } from '@fluentui/react-components'
 import type { PortableDiagnostics } from '../lib/storage'
-import type { UpdateState } from '../lib/updates'
+import { FEEDBACK_HAS_PUBLIC_FORM, openFeedbackGithubPage, type UpdateState } from '../lib/updates'
 import { AppIcon } from '../components/ui/AppIcon'
 
 export function BackupView({
@@ -116,6 +116,11 @@ export function BackupView({
           <Button appearance="secondary" icon={<AppIcon icon={MessageSquareText} size={16} />} onClick={onOpenFeedbackPage}>
             Invia feedback
           </Button>
+          {FEEDBACK_HAS_PUBLIC_FORM ? (
+            <Button appearance="subtle" icon={<AppIcon icon={ExternalLink} size={16} />} onClick={() => { void openFeedbackGithubPage() }}>
+              Apri issue tecnica su GitHub
+            </Button>
+          ) : null}
         </div>
       </section>
 

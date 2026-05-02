@@ -61,7 +61,13 @@ Prima di usare una nuova versione con dati reali, crea o verifica un backup JSON
 
 ## Beta libera
 
-Taxa Desk è scaricabile e utilizzabile gratuitamente durante la beta. Non ci sono limiti artificiali su movimenti, obiettivi, backup o aggiornamenti.
+Taxa Desk è scaricabile e utilizzabile gratuitamente durante la beta:
+
+- Uso permesso a privati, liberi professionisti, partite IVA e piccoli studi per la gestione della propria attività.
+- Nessun limite artificiale su movimenti, obiettivi, backup o aggiornamenti.
+- Nessuna telemetria, nessun account, nessun tracciamento online.
+
+La beta resta gratuita fino alla versione 1.0. Il modello commerciale per le versioni successive non è ancora deciso. La gratuità delle release già scaricate sotto questa licenza non viene comunque revocata: vedi clausola "Future licensing" della [LICENSE](LICENSE).
 
 Il codice resta source-available/proprietario: puoi consultare il repository, segnalare problemi e proporre miglioramenti, ma non puoi redistribuire, vendere o pubblicare versioni modificate senza autorizzazione scritta.
 
@@ -69,9 +75,9 @@ Il codice resta source-available/proprietario: puoi consultare il repository, se
 
 Chi prova Taxa Desk può inviare feedback dalla sezione `Dati & backup` dell’app, tramite il pulsante `Invia feedback`.
 
-Il feedback apre una pagina GitHub precompilata. Non inserire dati fiscali reali, backup completi, contenuti del database SQLite o informazioni personali sensibili.
+Il pulsante apre il form pubblico configurato dal maintainer (variabile di build `VITE_FEEDBACK_URL`). Se non è configurato alcun form, l’app indirizza alla issue template GitHub come fallback tecnico, e mostra la stessa voce GitHub anche quando un form pubblico è impostato, per chi preferisce la segnalazione tecnica.
 
-Per usare un form esterno al posto di GitHub Issues, imposta `VITE_FEEDBACK_URL` in fase di build.
+In entrambi i casi non inserire dati fiscali reali, backup completi, contenuti del database SQLite o informazioni personali sensibili.
 
 ## Dati locali e backup
 
