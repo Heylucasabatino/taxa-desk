@@ -41,7 +41,7 @@ Manifest:
 }
 ```
 
-Il campo `signature` contiene il contenuto integrale del file `.sig` minisign generato da `tauri signer sign`. Il portable updater verifica la firma con la stessa chiave pubblica usata dal Tauri updater installer (vedi `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). Un manifest senza firma valida viene rifiutato e l'aggiornamento non parte.
+Il campo `signature` contiene il testo minisign decodificato dal file `.sig` generato da `tauri signer sign`. Il file `.sig` prodotto da Tauri è base64: lo script `release:portable` lo decodifica prima di inserirlo nel manifest portable. Il portable updater verifica la firma con la stessa chiave pubblica usata dal Tauri updater installer (vedi `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). Un manifest senza firma valida viene rifiutato e l'aggiornamento non parte.
 
 Lo ZIP update contiene solo file applicativi sotto `app/`:
 

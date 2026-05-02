@@ -185,7 +185,7 @@ function signFile(filePath) {
     throw new Error(`Signature file not produced: ${sigPath}`)
   }
 
-  return readFileSync(sigPath, 'utf8').trim()
+  return Buffer.from(readFileSync(sigPath, 'utf8').trim(), 'base64').toString('utf8').trim()
 }
 
 function rmInsideWorkspace(path) {
