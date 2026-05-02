@@ -5,17 +5,21 @@ export function useHashView(onViewChange?: (view: ActiveView) => void) {
   const [activeView, setActiveView] = useState<ActiveView>(() => getViewFromHash())
 
   useEffect(() => {
-    function handleHashChange() {
+    function handleLocationChange() {
       const nextView = getViewFromHash()
 
       setActiveView(nextView)
       onViewChange?.(nextView)
     }
 
-    window.addEventListener('hashchange', handleHashChange)
-    handleHashChange()
+    window.addEventListener('hashchange', handleLocationChange)
+    window.addEventListener('popstate', handleLocationChange)
+    handleLocationChange()
 
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange)
+      window.removeEventListener('popstate', handleLocationChange)
+    }
   }, [onViewChange])
 
   function selectView(view: ActiveView) {

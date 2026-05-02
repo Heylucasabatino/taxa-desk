@@ -529,12 +529,13 @@ fn default_stored_profile() -> StoredTaxProfile {
 fn default_categories() -> Vec<Category> {
     vec![
         category("Sedute", "income"),
-        category("Supervisioni", "income"),
-        category("Formazione", "income"),
+        category("Consulenze", "income"),
+        category("Valutazioni", "income"),
         category("Altro", "income"),
         category("Spesa fissa", "expense"),
-        category("Formazione", "expense"),
-        category("Strumenti", "expense"),
+        category("Servizi professionali", "expense"),
+        category("Quote e iscrizioni", "expense"),
+        category("Software", "expense"),
         category("Altro", "expense"),
     ]
 }
@@ -1021,21 +1022,23 @@ fn normalize_movement(movement: RawMovement, fallback_type: Option<&str>, today:
     }
     .to_string();
 
-    let default_status = if movement_type == "income" {
-        "collected"
-    } else {
-        "paid"
-    };
-
     Movement {
         id: Some(value_or_uuid(movement.id)),
         date: value_or_default(movement.date, today),
-        movement_type,
+        status: normalize_movement_status(movement.status, &movement_type),
+        movement_type: movement_type.clone(),
         description: value_or_default(movement.description, "Movimento"),
         category: value_or_default(movement.category, "Altro"),
         amount: movement.amount.unwrap_or(0.0),
-        status: value_or_default(movement.status, default_status),
         notes: Some(movement.notes.unwrap_or_default()),
+    }
+}
+
+fn normalize_movement_status(status: Option<String>, movement_type: &str) -> String {
+    match status.as_deref() {
+        Some("collected" | "pending" | "paid" | "to_pay") => status.unwrap_or_default(),
+        _ if movement_type == "income" => "collected".to_string(),
+        _ => "paid".to_string(),
     }
 }
 
@@ -1075,9 +1078,16 @@ fn normalize_deadline(deadline: RawPersonalDeadline, today: &str) -> PersonalDea
         title: value_or_default(deadline.title, "Scadenza personale"),
         date: value_or_default(deadline.date, today),
         category: value_or_default(deadline.category, "personal"),
-        recurrence: value_or_default(deadline.recurrence, "none"),
+        recurrence: normalize_recurrence(deadline.recurrence),
         notes: Some(deadline.notes.unwrap_or_default()),
         completed_occurrences: Some(deadline.completed_occurrences.unwrap_or_default()),
+    }
+}
+
+fn normalize_recurrence(recurrence: Option<String>) -> String {
+    match recurrence.as_deref() {
+        Some("monthly" | "yearly") => recurrence.unwrap_or_default(),
+        _ => "none".to_string(),
     }
 }
 
@@ -1872,6 +1882,51 @@ mod tests {
 
         assert_eq!(payload.settings.id, "default");
         assert!(!payload.source_has_profile);
+    }
+
+    #[test]
+    fn parse_backup_payload_normalizes_invalid_status_and_recurrence() {
+        let payload = parse_backup_payload(
+            r#"
+            {
+              "movements": [
+                { "date": "2026-01-01", "type": "income", "description": "Seduta", "amount": 100, "status": "paid" },
+                { "date": "2026-01-02", "type": "expense", "description": "Software", "amount": 20, "status": "unknown" }
+              ],
+              "deadlines": [
+                { "title": "Scadenza", "date": "2026-06-30", "recurrence": "weekly" }
+              ]
+            }
+            "#,
+        )
+        .expect("invalid enum-like fields should be normalized");
+
+        assert_eq!(payload.movements[0].status, "paid");
+        assert_eq!(payload.movements[1].status, "paid");
+        assert_eq!(payload.deadlines[0].recurrence, "none");
+    }
+
+    #[test]
+    fn default_categories_match_frontend_taxa_desk_defaults() {
+        let names = default_categories()
+            .into_iter()
+            .map(|category| (category.category_type, category.name))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            names,
+            vec![
+                ("income".to_string(), "Sedute".to_string()),
+                ("income".to_string(), "Consulenze".to_string()),
+                ("income".to_string(), "Valutazioni".to_string()),
+                ("income".to_string(), "Altro".to_string()),
+                ("expense".to_string(), "Spesa fissa".to_string()),
+                ("expense".to_string(), "Servizi professionali".to_string()),
+                ("expense".to_string(), "Quote e iscrizioni".to_string()),
+                ("expense".to_string(), "Software".to_string()),
+                ("expense".to_string(), "Altro".to_string()),
+            ]
+        );
     }
 
     #[test]

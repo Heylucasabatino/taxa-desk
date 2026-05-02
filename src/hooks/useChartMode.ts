@@ -6,7 +6,7 @@ const chartModes: ChartMode[] = ['available', 'cashflow', 'reserve']
 
 export function useChartMode(defaultMode: ChartMode = 'available') {
   const [mode, setMode] = useState<ChartMode>(() => {
-    const stored = window.localStorage.getItem(chartModeKey)
+    const stored = readStoredChartMode()
 
     if (stored === 'net') return 'available'
 
@@ -14,7 +14,7 @@ export function useChartMode(defaultMode: ChartMode = 'available') {
   })
 
   useEffect(() => {
-    window.localStorage.setItem(chartModeKey, mode)
+    writeStoredChartMode(mode)
   }, [mode])
 
   return [mode, setMode] as const
@@ -22,4 +22,20 @@ export function useChartMode(defaultMode: ChartMode = 'available') {
 
 function isChartMode(value: string | null): value is ChartMode {
   return chartModes.includes(value as ChartMode)
+}
+
+function readStoredChartMode() {
+  try {
+    return window.localStorage.getItem(chartModeKey)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredChartMode(mode: ChartMode) {
+  try {
+    window.localStorage.setItem(chartModeKey, mode)
+  } catch {
+    // Il grafico resta utilizzabile anche se lo storage locale del browser non è disponibile.
+  }
 }
