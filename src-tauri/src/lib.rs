@@ -1,14 +1,13 @@
 use chrono::{Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    io::Write,
-    path::PathBuf,
-    sync::Mutex,
-};
+use sha2::{Digest, Sha256};
+use std::{collections::HashMap, fs, io::Write, path::PathBuf, process::Command, sync::Mutex};
 use tauri::Manager;
 use uuid::Uuid;
+
+const PORTABLE_MANIFEST_URL: &str =
+    "https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/portable-manifest.json";
 
 #[derive(Clone)]
 struct PortablePaths {
@@ -157,6 +156,34 @@ struct BackupResult {
     file_name: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PortableUpdateManifest {
+    version: String,
+    notes: Option<String>,
+    pub_date: Option<String>,
+    platforms: HashMap<String, PortableUpdatePlatform>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PortableUpdatePlatform {
+    url: String,
+    sha256: String,
+    size: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PortableUpdateInfo {
+    version: String,
+    notes: Option<String>,
+    pub_date: Option<String>,
+    url: String,
+    sha256: String,
+    size: Option<u64>,
+}
+
 impl DbState {
     fn open() -> Result<Self, String> {
         let paths = init_portable_paths()?;
@@ -199,7 +226,10 @@ impl DbState {
     }
 
     fn create_startup_backup_if_needed(&self) -> Result<(), String> {
-        let conn = self.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+        let conn = self
+            .connection
+            .lock()
+            .map_err(|_| "Database bloccato.".to_string())?;
         let movement_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM movements", [], |row| row.get(0))
             .map_err(to_message)?;
@@ -321,7 +351,9 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
 
 fn ensure_default_settings(conn: &Connection) -> rusqlite::Result<()> {
     let existing: Option<String> = conn
-        .query_row("SELECT id FROM settings WHERE id = 'default'", [], |row| row.get(0))
+        .query_row("SELECT id FROM settings WHERE id = 'default'", [], |row| {
+            row.get(0)
+        })
         .optional()?;
 
     if existing.is_none() {
@@ -346,7 +378,11 @@ fn ensure_default_categories(conn: &Connection) -> rusqlite::Result<()> {
 
 fn ensure_default_preferences(conn: &Connection) -> rusqlite::Result<()> {
     let existing: Option<String> = conn
-        .query_row("SELECT id FROM preferences WHERE id = 'default'", [], |row| row.get(0))
+        .query_row(
+            "SELECT id FROM preferences WHERE id = 'default'",
+            [],
+            |row| row.get(0),
+        )
         .optional()?;
 
     if existing.is_none() {
@@ -512,7 +548,8 @@ fn read_deadlines(conn: &Connection) -> rusqlite::Result<Vec<PersonalDeadline>> 
     )?;
     let rows = statement.query_map([], |row| {
         let completed_json: String = row.get(6)?;
-        let completed_occurrences = serde_json::from_str::<Vec<String>>(&completed_json).unwrap_or_default();
+        let completed_occurrences =
+            serde_json::from_str::<Vec<String>>(&completed_json).unwrap_or_default();
 
         Ok(PersonalDeadline {
             id: Some(row.get(0)?),
@@ -581,7 +618,10 @@ fn upsert_profile(conn: &Connection, profile: &StoredTaxProfile) -> rusqlite::Re
     Ok(())
 }
 
-fn upsert_profile_from_tax_profile(conn: &Connection, profile: &TaxProfile) -> rusqlite::Result<()> {
+fn upsert_profile_from_tax_profile(
+    conn: &Connection,
+    profile: &TaxProfile,
+) -> rusqlite::Result<()> {
     let stored = StoredTaxProfile {
         id: "default".to_string(),
         taxable_coefficient: profile.taxable_coefficient,
@@ -650,7 +690,13 @@ fn upsert_goal_row(conn: &Connection, goal: &Goal) -> rusqlite::Result<String> {
             saved_amount = excluded.saved_amount,
             target_date = excluded.target_date
         ",
-        params![id, goal.name, goal.target_amount, goal.saved_amount, goal.target_date],
+        params![
+            id,
+            goal.name,
+            goal.target_amount,
+            goal.saved_amount,
+            goal.target_date
+        ],
     )?;
 
     Ok(id)
@@ -683,8 +729,9 @@ fn upsert_deadline_row(conn: &Connection, deadline: &PersonalDeadline) -> rusqli
         .clone()
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
-    let completed = serde_json::to_string(&deadline.completed_occurrences.clone().unwrap_or_default())
-        .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+    let completed =
+        serde_json::to_string(&deadline.completed_occurrences.clone().unwrap_or_default())
+            .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
 
     conn.execute(
         "
@@ -771,7 +818,11 @@ fn replace_data_from_backup(tx: &Transaction<'_>, payload: &BackupPayload) -> ru
     Ok(())
 }
 
-fn write_backup(paths: &PortablePaths, payload: &BackupPayload, file_name: &str) -> Result<BackupResult, String> {
+fn write_backup(
+    paths: &PortablePaths,
+    payload: &BackupPayload,
+    file_name: &str,
+) -> Result<BackupResult, String> {
     let final_path = paths.backups_dir.join(file_name);
     let tmp_path = paths.backups_dir.join(format!("{file_name}.tmp"));
     let json = serde_json::to_vec_pretty(payload).map_err(to_message)?;
@@ -791,11 +842,18 @@ fn write_backup(paths: &PortablePaths, payload: &BackupPayload, file_name: &str)
 }
 
 fn create_auto_backup_for_state(state: &DbState) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let payload = build_backup_payload(&conn).map_err(to_message)?;
     let now = Utc::now();
     let daily_name = format!("auto-daily-{}.json", now.format("%Y-%m-%d"));
-    let weekly_name = format!("auto-weekly-{}-W{:02}.json", now.year(), now.iso_week().week());
+    let weekly_name = format!(
+        "auto-weekly-{}-W{:02}.json",
+        now.year(),
+        now.iso_week().week()
+    );
 
     write_backup(&state.paths, &payload, &daily_name)?;
     write_backup(&state.paths, &payload, &weekly_name)?;
@@ -811,12 +869,7 @@ fn rotate_backups(backups_dir: &PathBuf, prefix: &str, keep: usize) -> Result<()
     let mut files = fs::read_dir(backups_dir)
         .map_err(to_message)?
         .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .file_name()
-                .to_string_lossy()
-                .starts_with(prefix)
-        })
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with(prefix))
         .collect::<Vec<_>>();
 
     files.sort_by_key(|entry| entry.file_name());
@@ -855,13 +908,19 @@ fn portable_diagnostics(state: tauri::State<'_, DbState>) -> PortableDiagnostics
 
 #[tauri::command]
 fn get_app_data(state: tauri::State<'_, DbState>) -> Result<AppData, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     read_app_data(&conn).map_err(to_message)
 }
 
 #[tauri::command]
 fn save_profile(state: tauri::State<'_, DbState>, profile: TaxProfile) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     upsert_profile_from_tax_profile(&conn, &profile).map_err(to_message)?;
     drop(conn);
     state.log("profile saved")?;
@@ -870,17 +929,29 @@ fn save_profile(state: tauri::State<'_, DbState>, profile: TaxProfile) -> Result
 }
 
 #[tauri::command]
-fn create_movement(state: tauri::State<'_, DbState>, movement: Movement) -> Result<Movement, String> {
+fn create_movement(
+    state: tauri::State<'_, DbState>,
+    movement: Movement,
+) -> Result<Movement, String> {
     upsert_movement_command(state, movement)
 }
 
 #[tauri::command]
-fn upsert_movement(state: tauri::State<'_, DbState>, movement: Movement) -> Result<Movement, String> {
+fn upsert_movement(
+    state: tauri::State<'_, DbState>,
+    movement: Movement,
+) -> Result<Movement, String> {
     upsert_movement_command(state, movement)
 }
 
-fn upsert_movement_command(state: tauri::State<'_, DbState>, mut movement: Movement) -> Result<Movement, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+fn upsert_movement_command(
+    state: tauri::State<'_, DbState>,
+    mut movement: Movement,
+) -> Result<Movement, String> {
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let id = upsert_movement_row(&conn, &movement).map_err(to_message)?;
     movement.id = Some(id);
     drop(conn);
@@ -891,7 +962,10 @@ fn upsert_movement_command(state: tauri::State<'_, DbState>, mut movement: Movem
 
 #[tauri::command]
 fn delete_movement(state: tauri::State<'_, DbState>, id: String) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     conn.execute("DELETE FROM movements WHERE id = ?1", params![id])
         .map_err(to_message)?;
     drop(conn);
@@ -911,7 +985,10 @@ fn upsert_goal(state: tauri::State<'_, DbState>, goal: Goal) -> Result<Goal, Str
 }
 
 fn upsert_goal_command(state: tauri::State<'_, DbState>, mut goal: Goal) -> Result<Goal, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let id = upsert_goal_row(&conn, &goal).map_err(to_message)?;
     goal.id = Some(id);
     drop(conn);
@@ -922,7 +999,10 @@ fn upsert_goal_command(state: tauri::State<'_, DbState>, mut goal: Goal) -> Resu
 
 #[tauri::command]
 fn delete_goal(state: tauri::State<'_, DbState>, id: String) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     conn.execute("DELETE FROM goals WHERE id = ?1", params![id])
         .map_err(to_message)?;
     drop(conn);
@@ -932,17 +1012,29 @@ fn delete_goal(state: tauri::State<'_, DbState>, id: String) -> Result<(), Strin
 }
 
 #[tauri::command]
-fn create_deadline(state: tauri::State<'_, DbState>, deadline: PersonalDeadline) -> Result<PersonalDeadline, String> {
+fn create_deadline(
+    state: tauri::State<'_, DbState>,
+    deadline: PersonalDeadline,
+) -> Result<PersonalDeadline, String> {
     upsert_deadline_command(state, deadline)
 }
 
 #[tauri::command]
-fn upsert_deadline(state: tauri::State<'_, DbState>, deadline: PersonalDeadline) -> Result<PersonalDeadline, String> {
+fn upsert_deadline(
+    state: tauri::State<'_, DbState>,
+    deadline: PersonalDeadline,
+) -> Result<PersonalDeadline, String> {
     upsert_deadline_command(state, deadline)
 }
 
-fn upsert_deadline_command(state: tauri::State<'_, DbState>, mut deadline: PersonalDeadline) -> Result<PersonalDeadline, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+fn upsert_deadline_command(
+    state: tauri::State<'_, DbState>,
+    mut deadline: PersonalDeadline,
+) -> Result<PersonalDeadline, String> {
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let id = upsert_deadline_row(&conn, &deadline).map_err(to_message)?;
     deadline.id = Some(id);
     drop(conn);
@@ -953,7 +1045,10 @@ fn upsert_deadline_command(state: tauri::State<'_, DbState>, mut deadline: Perso
 
 #[tauri::command]
 fn delete_deadline(state: tauri::State<'_, DbState>, id: String) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     conn.execute("DELETE FROM deadlines WHERE id = ?1", params![id])
         .map_err(to_message)?;
     drop(conn);
@@ -963,8 +1058,14 @@ fn delete_deadline(state: tauri::State<'_, DbState>, id: String) -> Result<(), S
 }
 
 #[tauri::command]
-fn save_preferences(state: tauri::State<'_, DbState>, preferences: AppPreferences) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+fn save_preferences(
+    state: tauri::State<'_, DbState>,
+    preferences: AppPreferences,
+) -> Result<(), String> {
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     upsert_preferences(&conn, &preferences).map_err(to_message)?;
     drop(conn);
     state.log("preferences saved")?;
@@ -973,8 +1074,14 @@ fn save_preferences(state: tauri::State<'_, DbState>, preferences: AppPreference
 }
 
 #[tauri::command]
-fn create_category(state: tauri::State<'_, DbState>, mut category: Category) -> Result<Category, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+fn create_category(
+    state: tauri::State<'_, DbState>,
+    mut category: Category,
+) -> Result<Category, String> {
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let id = upsert_category_row(&conn, &category).map_err(to_message)?;
     category.id = Some(id);
     drop(conn);
@@ -985,7 +1092,10 @@ fn create_category(state: tauri::State<'_, DbState>, mut category: Category) -> 
 
 #[tauri::command]
 fn delete_category(state: tauri::State<'_, DbState>, id: String) -> Result<(), String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     conn.execute("DELETE FROM categories WHERE id = ?1", params![id])
         .map_err(to_message)?;
     drop(conn);
@@ -996,9 +1106,15 @@ fn delete_category(state: tauri::State<'_, DbState>, id: String) -> Result<(), S
 
 #[tauri::command]
 fn export_backup(state: tauri::State<'_, DbState>) -> Result<BackupResult, String> {
-    let conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let payload = build_backup_payload(&conn).map_err(to_message)?;
-    let file_name = format!("fondi-tasse-backup-{}.json", Utc::now().format("%Y-%m-%d-%H%M%S"));
+    let file_name = format!(
+        "fondi-tasse-backup-{}.json",
+        Utc::now().format("%Y-%m-%d-%H%M%S")
+    );
     let result = write_backup(&state.paths, &payload, &file_name)?;
     drop(conn);
     state.log("manual backup exported")?;
@@ -1012,7 +1128,10 @@ fn import_backup(state: tauri::State<'_, DbState>, payload: BackupPayload) -> Re
         return Err("Backup non valido o non compatibile.".to_string());
     }
 
-    let mut conn = state.connection.lock().map_err(|_| "Database bloccato.".to_string())?;
+    let mut conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
     let before_payload = build_backup_payload(&conn).map_err(to_message)?;
     let before_name = format!("pre-import-{}.json", Utc::now().format("%Y-%m-%d-%H%M%S"));
     write_backup(&state.paths, &before_payload, &before_name)?;
@@ -1029,6 +1148,167 @@ fn import_backup(state: tauri::State<'_, DbState>, payload: BackupPayload) -> Re
 #[tauri::command]
 fn create_auto_backup(state: tauri::State<'_, DbState>) -> Result<(), String> {
     create_auto_backup_for_state(&state)
+}
+
+#[tauri::command]
+fn check_portable_update(
+    state: tauri::State<'_, DbState>,
+    current_version: String,
+) -> Result<Option<PortableUpdateInfo>, String> {
+    if find_portable_updater(&state.paths).is_err() {
+        return Ok(None);
+    }
+
+    let Some(manifest) = fetch_portable_manifest()? else {
+        return Ok(None);
+    };
+    let Some(platform) = manifest.platforms.get("windows-x86_64") else {
+        return Ok(None);
+    };
+
+    if !is_version_newer(&manifest.version, &current_version) {
+        return Ok(None);
+    }
+
+    Ok(Some(PortableUpdateInfo {
+        version: manifest.version,
+        notes: manifest.notes,
+        pub_date: manifest.pub_date,
+        url: platform.url.clone(),
+        sha256: platform.sha256.clone(),
+        size: platform.size,
+    }))
+}
+
+#[tauri::command]
+fn install_portable_update(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, DbState>,
+    update: PortableUpdateInfo,
+) -> Result<(), String> {
+    state.log(&format!(
+        "portable update download started: {}",
+        update.version
+    ))?;
+    let package_path = download_portable_package(&state.paths, &update)?;
+    state.log(&format!(
+        "portable update downloaded: {}",
+        package_path.display()
+    ))?;
+    launch_portable_updater(&app, &state.paths, &package_path)?;
+    state.log("portable updater launched")?;
+    app.exit(0);
+
+    Ok(())
+}
+
+fn fetch_portable_manifest() -> Result<Option<PortableUpdateManifest>, String> {
+    let response = reqwest::blocking::get(PORTABLE_MANIFEST_URL).map_err(to_message)?;
+
+    if response.status().as_u16() == 404 {
+        return Ok(None);
+    }
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Manifest aggiornamenti portable non disponibile: HTTP {}.",
+            response.status()
+        ));
+    }
+
+    response
+        .json::<PortableUpdateManifest>()
+        .map(Some)
+        .map_err(to_message)
+}
+
+fn download_portable_package(
+    paths: &PortablePaths,
+    update: &PortableUpdateInfo,
+) -> Result<PathBuf, String> {
+    let response = reqwest::blocking::get(&update.url).map_err(to_message)?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Pacchetto aggiornamento non disponibile: HTTP {}.",
+            response.status()
+        ));
+    }
+
+    let bytes = response.bytes().map_err(to_message)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    let digest = hex::encode(hasher.finalize());
+
+    if !digest.eq_ignore_ascii_case(update.sha256.trim()) {
+        return Err("Verifica SHA256 del pacchetto update non riuscita.".to_string());
+    }
+
+    let updates_dir = paths.exe_dir.join(".updates");
+    fs::create_dir_all(&updates_dir).map_err(to_message)?;
+    let package_path = updates_dir.join(format!("taxa-desk-{}-update.zip", update.version));
+    fs::write(&package_path, &bytes).map_err(to_message)?;
+
+    Ok(package_path)
+}
+
+fn launch_portable_updater(
+    app: &tauri::AppHandle,
+    paths: &PortablePaths,
+    package_path: &PathBuf,
+) -> Result<(), String> {
+    let current_exe = std::env::current_exe().map_err(to_message)?;
+    let app_exe_name = current_exe
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "Nome eseguibile app non disponibile.".to_string())?;
+    let updater_path = find_portable_updater(paths)?;
+    let pid = std::process::id().to_string();
+    let log_path = paths.logs_dir.join("app.log");
+
+    Command::new(updater_path)
+        .arg("--app-dir")
+        .arg(&paths.exe_dir)
+        .arg("--package")
+        .arg(package_path)
+        .arg("--pid")
+        .arg(pid)
+        .arg("--exe")
+        .arg(app_exe_name)
+        .arg("--log")
+        .arg(log_path)
+        .current_dir(&paths.exe_dir)
+        .spawn()
+        .map_err(to_message)?;
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.close();
+    }
+
+    Ok(())
+}
+
+fn find_portable_updater(paths: &PortablePaths) -> Result<PathBuf, String> {
+    let candidates = [
+        paths.exe_dir.join("Taxa Desk Updater.exe"),
+        paths.exe_dir.join("taxa-desk-updater.exe"),
+    ];
+
+    candidates
+        .into_iter()
+        .find(|path| path.exists())
+        .ok_or_else(|| "Taxa Desk Updater.exe non trovato nella cartella dell’app.".to_string())
+}
+
+fn is_version_newer(candidate: &str, current: &str) -> bool {
+    parse_version(candidate) > parse_version(current)
+}
+
+fn parse_version(version: &str) -> Vec<u64> {
+    version
+        .split('.')
+        .map(|part| part.parse::<u64>().unwrap_or(0))
+        .collect()
 }
 
 #[tauri::command]
@@ -1057,8 +1337,7 @@ pub fn run() {
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
             #[cfg(desktop)]
-            app.handle()
-                .plugin(tauri_plugin_opener::init())?;
+            app.handle().plugin(tauri_plugin_opener::init())?;
 
             let state = DbState::open().map_err(|message| {
                 let error = std::io::Error::new(std::io::ErrorKind::Other, message);
@@ -1087,6 +1366,8 @@ pub fn run() {
             export_backup,
             import_backup,
             create_auto_backup,
+            check_portable_update,
+            install_portable_update,
             window_minimize,
             window_toggle_maximize,
             window_close,

@@ -1,12 +1,72 @@
 # Aggiornamenti online assistiti
 
-Taxa Desk usa il plugin ufficiale Tauri updater v2 con un endpoint statico su GitHub Releases:
+Taxa Desk supporta due canali di aggiornamento:
+
+- **portable updater** per la cartella autonoma consigliata in beta;
+- **Tauri updater ufficiale** per il canale installer NSIS.
+
+Il canale portable è quello orientato all’utente non tecnico: l’utente clicca `Verifica aggiornamenti`, conferma, l’app crea un backup JSON locale, scarica il pacchetto update, chiude Taxa Desk, sostituisce solo i file applicativi e riapre l’app.
+
+Il canale installer usa il plugin ufficiale Tauri updater v2 con un endpoint statico su GitHub Releases:
 
 ```text
 https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/latest.json
 ```
 
-Il controllo aggiornamenti deve restare manuale e privacy-first: non invia dati fiscali, movimenti, contenuti SQLite, path locali, account o telemetria. Il client scarica solo il manifest `latest.json` e, dopo conferma dell’utente, l’installer firmato.
+Il controllo aggiornamenti deve restare manuale e privacy-first: non invia dati fiscali, movimenti, contenuti SQLite, path locali, account o telemetria. Il client scarica solo i manifest di versione e, dopo conferma dell’utente, il pacchetto update o l’installer.
+
+## Portable updater
+
+Endpoint:
+
+```text
+https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/portable-manifest.json
+```
+
+Manifest:
+
+```json
+{
+  "version": "0.1.3",
+  "notes": "Correzioni e miglioramenti.",
+  "pubDate": "2026-05-02T10:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/v0.1.3/Taxa.Desk_0.1.3_windows_x64_update.zip",
+      "sha256": "<sha256 dello zip update>",
+      "size": 1234567
+    }
+  }
+}
+```
+
+Lo ZIP update contiene solo file applicativi sotto `app/`:
+
+```text
+app/
+  Taxa Desk.exe
+  LEGGIMI.txt
+```
+
+Non deve contenere `data/`, `backups/` o `logs/`.
+
+La cartella portable completa per primo download contiene:
+
+```text
+Taxa Desk/
+  Taxa Desk.exe
+  Taxa Desk Updater.exe
+  LEGGIMI.txt
+  data/
+  backups/
+  logs/
+```
+
+Il comando release genera entrambi:
+
+```powershell
+npm run release:portable
+```
 
 ## Chiavi updater
 
@@ -79,6 +139,10 @@ npm run release:latest-json
    - installer NSIS `.exe`;
    - firma `.exe.sig`;
    - `latest.json`.
+10. Genera e carica artifact portable:
+   - `Taxa.Desk_X.Y.Z_windows_x64_portable.zip`;
+   - `Taxa.Desk_X.Y.Z_windows_x64_update.zip`;
+   - `portable-manifest.json`.
 
 ## Manifest latest.json
 
@@ -120,20 +184,14 @@ Test manuali richiesti:
 - verifica senza rete: mostra errore di rete comprensibile;
 - nessun aggiornamento disponibile: stato `Nessun aggiornamento`;
 - update disponibile: mostra changelog e pulsante di installazione;
+- portable update: backup locale, download ZIP update, chiusura app, sostituzione file applicativi e riapertura;
 - fallback manuale: `Apri pagina download` apre `https://github.com/Heylucasabatino/taxa-desk/releases/latest`;
 - backup pre-update riuscito: path backup visibile;
 - errore backup: installazione bloccata;
 - messaggi privacy chiari.
 
-## Limite portable
+## Limite installer
 
 Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla piattaforma. Su Windows con target NSIS usa l’installer firmato e `installMode: "passive"`.
 
-La distribuzione portable a cartella resta supportata per dati e backup locali, ma l’update in-place di una semplice cartella portable non è un flusso garantito dal plugin updater. Se nei test reali l’installer NSIS non preserva bene l’esperienza portable desiderata, usare un flusso assistito alternativo:
-
-1. creare sempre backup JSON locale;
-2. aprire la pagina GitHub Release con `Apri pagina download`;
-3. mostrare istruzioni UI per chiudere l’app e sostituire solo i file applicativi;
-4. non toccare `data/`, `backups/` e `logs/`.
-
-Questo mantiene il controllo all’utente e non introduce backend custom o telemetria.
+La distribuzione portable non usa il plugin Tauri updater per sostituire la cartella: usa `Taxa Desk Updater.exe`, un processo esterno che può aggiornare l’eseguibile dopo la chiusura dell’app.

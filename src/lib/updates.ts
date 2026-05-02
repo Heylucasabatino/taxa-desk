@@ -1,4 +1,5 @@
 import { getVersion } from '@tauri-apps/api/app'
+import { invoke } from '@tauri-apps/api/core'
 import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updater'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -21,11 +22,21 @@ export type UpdatePhase =
 export type UpdateState = {
   phase: UpdatePhase
   currentVersion: string
+  channel?: 'portable' | 'installer'
   availableVersion?: string
   changelog?: string
   backupPath?: string
   progress?: number
   error?: string
+}
+
+export type PortableUpdateInfo = {
+  version: string
+  notes?: string
+  pubDate?: string
+  url: string
+  sha256: string
+  size?: number
 }
 
 export const initialUpdateState: UpdateState = {
@@ -51,6 +62,22 @@ export async function checkForAppUpdate() {
   return check({ timeout: 30_000 })
 }
 
+export async function checkForPortableUpdate(currentVersion: string) {
+  if (!isTauriRuntime()) {
+    return null
+  }
+
+  return invoke<PortableUpdateInfo | null>('check_portable_update', { currentVersion })
+}
+
+export async function installPortableUpdate(update: PortableUpdateInfo) {
+  if (!isTauriRuntime()) {
+    throw new Error('Aggiornamento portable disponibile solo nell’app desktop.')
+  }
+
+  await invoke('install_portable_update', { update })
+}
+
 export async function openLatestReleasePage() {
   await openExternalUrl(RELEASES_LATEST_URL)
 }
@@ -71,9 +98,20 @@ async function openExternalUrl(url: string) {
 export function toUpdateState(update: Update, currentVersion: string): UpdateState {
   return {
     phase: 'available',
+    channel: 'installer',
     currentVersion,
     availableVersion: update.version,
     changelog: update.body,
+  }
+}
+
+export function toPortableUpdateState(update: PortableUpdateInfo, currentVersion: string): UpdateState {
+  return {
+    phase: 'available',
+    channel: 'portable',
+    currentVersion,
+    availableVersion: update.version,
+    changelog: update.notes,
   }
 }
 

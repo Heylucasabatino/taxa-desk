@@ -12,7 +12,7 @@ import { useToast } from './hooks/useToast'
 import { estimateFiscalPosition, filterMovementsByYear, getAvailableYears, type AppPreferences, type Goal, type Movement, type MovementType, type PersonalDeadline, type TaxProfile } from './lib/finance'
 import { type ActiveView } from './lib/routing'
 import { appStorage, type PortableDiagnostics } from './lib/storage'
-import { checkForAppUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, isTauriRuntime, openFeedbackPage, openLatestReleasePage, readInstalledVersion, toUpdateState, type UpdateState } from './lib/updates'
+import { checkForAppUpdate, checkForPortableUpdate, formatUpdaterError, getDownloadProgress, initialUpdateState, installPortableUpdate, isTauriRuntime, openFeedbackPage, openLatestReleasePage, readInstalledVersion, toPortableUpdateState, toUpdateState, type PortableUpdateInfo, type UpdateState } from './lib/updates'
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
 import type { Update } from '@tauri-apps/plugin-updater'
@@ -56,6 +56,7 @@ function App() {
   const [goalErrors, setGoalErrors] = useState<Partial<Record<keyof GoalFormState, string>>>({})
   const backupInputRef = useRef<HTMLInputElement>(null)
   const pendingUpdateRef = useRef<Update | null>(null)
+  const pendingPortableUpdateRef = useRef<PortableUpdateInfo | null>(null)
   const { toast, notify } = useToast()
   const { theme, setTheme } = useTheme()
   const { appData, movements, goals, profile, categories, deadlines, preferences } = useAppData(notify)
@@ -321,6 +322,7 @@ function App() {
 
     pendingUpdateRef.current?.close().catch(() => undefined)
     pendingUpdateRef.current = null
+    pendingPortableUpdateRef.current = null
     setUpdateState((state) => ({
       phase: 'checking',
       currentVersion: state.currentVersion,
@@ -328,6 +330,15 @@ function App() {
 
     try {
       const currentVersion = await readInstalledVersion()
+      const portableUpdate = await checkForPortableUpdate(currentVersion)
+
+      if (portableUpdate) {
+        pendingPortableUpdateRef.current = portableUpdate
+        setUpdateState(toPortableUpdateState(portableUpdate, currentVersion))
+        notify(`Aggiornamento portable ${portableUpdate.version} disponibile.`)
+        return
+      }
+
       const update = await checkForAppUpdate()
 
       if (!update) {
@@ -348,9 +359,10 @@ function App() {
     }
   }
   async function handleInstallUpdate() {
+    const portableUpdate = pendingPortableUpdateRef.current
     const update = pendingUpdateRef.current
 
-    if (!update) {
+    if (!portableUpdate && !update) {
       setUpdateState((state) => ({
         ...state,
         phase: 'error',
@@ -369,6 +381,16 @@ function App() {
       setUpdateState((state) => ({ ...state, phase: 'backup', error: undefined }))
       const backupPath = await appStorage.exportBackup()
       setUpdateState((state) => ({ ...state, backupPath, phase: 'downloading', progress: 0 }))
+
+      if (portableUpdate) {
+        await installPortableUpdate(portableUpdate)
+        setUpdateState((state) => ({ ...state, phase: 'installing', progress: 100 }))
+        return
+      }
+
+      if (!update) {
+        throw new Error('Aggiornamento installer non disponibile.')
+      }
 
       let downloadedBytes = 0
       let contentLength = 0
@@ -394,6 +416,7 @@ function App() {
       })
 
       pendingUpdateRef.current = null
+      pendingPortableUpdateRef.current = null
       setUpdateState((state) => ({ ...state, phase: 'installed', progress: 100 }))
       notify('Aggiornamento installato. Riavvia l’app se resta aperta.')
     } catch (error) {

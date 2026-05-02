@@ -134,16 +134,16 @@ export function BackupView({
             <dd>{updateState.currentVersion}</dd>
           </div>
           <div>
+            <dt>Canale</dt>
+            <dd>{updateState.channel === 'portable' ? 'Portable' : updateState.channel === 'installer' ? 'Installer' : 'Da verificare'}</dd>
+          </div>
+          <div>
             <dt>Nuova versione</dt>
             <dd>{updateState.availableVersion ?? 'Non verificata'}</dd>
           </div>
           <div>
             <dt>Backup pre-update</dt>
             <dd title={updateState.backupPath ?? 'Creato solo prima dell’installazione'}>{updateState.backupPath ?? 'Creato prima di installare'}</dd>
-          </div>
-          <div>
-            <dt>Download</dt>
-            <dd>{typeof updateState.progress === 'number' ? `${updateState.progress}%` : 'In attesa'}</dd>
           </div>
         </dl>
 
@@ -157,7 +157,7 @@ export function BackupView({
         {updateState.error ? <p className="update-error">{updateState.error}</p> : null}
 
         <p className="update-privacy">
-          Il controllo aggiornamenti scarica solo informazioni sulla versione. I dati dell’archivio restano sul dispositivo.
+          Il controllo aggiornamenti scarica solo informazioni sulla versione. Nel canale portable l’app scarica il pacchetto, crea un backup locale e sostituisce solo i file applicativi. I dati dell’archivio restano sul dispositivo.
         </p>
 
         <div className="backup-action-list">

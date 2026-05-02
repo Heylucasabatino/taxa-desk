@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "release:latest-json": "node scripts/create-latest-json.mjs"
+    "release:latest-json": "node scripts/create-latest-json.mjs",
+    "release:portable": "node scripts/create-portable.mjs"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.73.8",

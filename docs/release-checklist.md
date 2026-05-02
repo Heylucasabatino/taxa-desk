@@ -35,6 +35,23 @@ Verificare che siano prodotti:
 - firma `.exe.sig`;
 - artifact updater richiesti da Tauri.
 
+## Portable
+
+Generare pacchetto portable, pacchetto update e manifest:
+
+```powershell
+$env:GITHUB_REPOSITORY="Heylucasabatino/taxa-desk"
+$env:RELEASE_TAG="vX.Y.Z"
+$env:RELEASE_NOTES="Sintesi breve della release."
+npm run release:portable
+```
+
+Verificare che `release-portable/` contenga:
+
+- `Taxa.Desk_X.Y.Z_windows_x64_portable.zip`;
+- `Taxa.Desk_X.Y.Z_windows_x64_update.zip`;
+- `portable-manifest.json`.
+
 ## Manifest updater
 
 ```powershell
@@ -72,13 +89,23 @@ Controllare che `latest.json` contenga:
 - [ ] Caricare installer `.exe`.
 - [ ] Caricare `.exe.sig`.
 - [ ] Caricare `latest.json`.
+- [ ] Caricare ZIP portable.
+- [ ] Caricare ZIP update.
+- [ ] Caricare `portable-manifest.json`.
 - [ ] Verificare URL:
 
 ```text
 https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/latest.json
 ```
 
+- [ ] Verificare URL portable:
+
+```text
+https://github.com/Heylucasabatino/taxa-desk/releases/latest/download/portable-manifest.json
+```
+
 - [ ] Verificare che l’installer sia scaricabile.
+- [ ] Verificare che lo ZIP portable sia scaricabile.
 - [ ] Aggiornare README se cambiano requisiti o installazione.
 
 ## Dopo la release

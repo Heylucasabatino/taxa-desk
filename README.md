@@ -52,6 +52,11 @@ La release pubblica più recente è disponibile nella pagina:
 
 Attualmente Taxa Desk è gratuito in beta e disponibile per Windows 10/11 x64. macOS e Linux non sono pianificati per la beta.
 
+Download consigliato per la beta:
+
+- `Taxa.Desk_<versione>_windows_x64_portable.zip`: cartella autonoma con `Taxa Desk.exe`, updater portable e cartelle dati locali.
+- Installer `.exe`: canale alternativo per test del bundle Windows.
+
 Prima di usare una nuova versione con dati reali, crea o verifica un backup JSON dalla sezione `Dati & backup`.
 
 ## Beta libera
@@ -86,9 +91,12 @@ La build web di sviluppo resta compatibile con IndexedDB tramite Dexie nel datab
 
 ## Aggiornamenti
 
-Taxa Desk usa il plugin ufficiale Tauri updater v2 con manifest statico su GitHub Releases. Il controllo aggiornamenti scarica solo informazioni sulla versione; i dati dell’archivio restano sul dispositivo.
+Taxa Desk supporta due canali:
 
-Prima dell’installazione di un aggiornamento, l’app crea un backup JSON locale. Se il backup fallisce, l’installazione viene bloccata.
+- portable updater: scarica un pacchetto update da GitHub Releases, crea un backup JSON locale, chiude l’app, sostituisce solo i file applicativi e riapre Taxa Desk;
+- Tauri updater ufficiale: resta disponibile per il canale installer.
+
+Il controllo aggiornamenti scarica solo informazioni sulla versione. I dati dell’archivio restano sul dispositivo. Prima dell’installazione di un aggiornamento, l’app crea un backup JSON locale. Se il backup fallisce, l’installazione viene bloccata.
 
 Dettagli tecnici: [docs/updates.md](docs/updates.md)
 
