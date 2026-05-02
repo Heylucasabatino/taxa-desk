@@ -48,7 +48,7 @@ export type PortableUpdateInfo = {
 
 export const initialUpdateState: UpdateState = {
   phase: 'idle',
-  currentVersion: '0.1.2',
+  currentVersion: __APP_VERSION__,
 }
 
 export function isTauriRuntime() {

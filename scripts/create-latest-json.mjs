@@ -12,6 +12,13 @@ const bundleDir = process.env.TAURI_BUNDLE_DIR
 const tauriConfig = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
 const version = tauriConfig.version
 const tag = process.env.RELEASE_TAG ?? `v${version}`
+const feedbackUrl = process.env.VITE_FEEDBACK_URL?.trim()
+
+if (!feedbackUrl) {
+  throw new Error(
+    'VITE_FEEDBACK_URL is not set. Configure the public feedback form before creating release manifests.',
+  )
+}
 
 if (!existsSync(bundleDir)) {
   throw new Error(`Bundle directory not found: ${bundleDir}`)

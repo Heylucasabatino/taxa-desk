@@ -70,10 +70,12 @@ Il comando release genera entrambi e firma il pacchetto update:
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY="C:\Users\<utente>\.tauri\fondi-e-tasse\updater.key"
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<password-se-presente>"
+$env:VITE_FEEDBACK_URL="https://<form-pubblico-feedback>"
 npm run release:portable
 ```
 
 Senza `TAURI_SIGNING_PRIVATE_KEY` impostato, lo script si interrompe prima di scrivere il manifest: i pacchetti portable non firmati non sono ammessi.
+Senza `VITE_FEEDBACK_URL`, gli script di release si interrompono: la beta pubblica deve sempre puntare a un canale feedback utilizzabile anche senza account GitHub.
 
 ## Chiavi updater
 
@@ -98,6 +100,7 @@ Per release locali o CI usa variabili d’ambiente:
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY="C:\Users\<utente>\.tauri\fondi-e-tasse\updater.key"
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<password-se-presente>"
+$env:VITE_FEEDBACK_URL="https://<form-pubblico-feedback>"
 npm run tauri:build
 ```
 
@@ -131,6 +134,7 @@ npm run tauri:build
 $env:GITHUB_REPOSITORY="Heylucasabatino/taxa-desk"
 $env:RELEASE_TAG="v0.1.2"
 $env:RELEASE_NOTES="Correzioni e miglioramenti."
+$env:VITE_FEEDBACK_URL="https://<form-pubblico-feedback>"
 npm run release:latest-json
 ```
 

@@ -178,7 +178,7 @@ struct PortableUpdatePlatform {
     url: String,
     sha256: String,
     size: Option<u64>,
-    signature: String,
+    signature: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1179,6 +1179,13 @@ fn check_portable_update(
         return Ok(None);
     }
 
+    let Some(signature) = platform.signature.clone() else {
+        return Err(
+            "Manifest aggiornamenti portable non firmato. Aggiorna manualmente dalla pagina download."
+                .to_string(),
+        );
+    };
+
     Ok(Some(PortableUpdateInfo {
         version: manifest.version,
         notes: manifest.notes,
@@ -1186,7 +1193,7 @@ fn check_portable_update(
         url: platform.url.clone(),
         sha256: platform.sha256.clone(),
         size: platform.size,
-        signature: platform.signature.clone(),
+        signature,
     }))
 }
 

@@ -24,6 +24,13 @@ const updateZipName = `Taxa.Desk_${version}_windows_x64_update.zip`
 const portableZipPath = join(outputDir, portableZipName)
 const updateZipPath = join(outputDir, updateZipName)
 const manifestPath = join(outputDir, 'portable-manifest.json')
+const feedbackUrl = process.env.VITE_FEEDBACK_URL?.trim()
+
+if (!feedbackUrl) {
+  throw new Error(
+    'VITE_FEEDBACK_URL is not set. Configure the public feedback form before creating release portable artifacts.',
+  )
+}
 
 if (!existsSync(appBinary)) {
   throw new Error(`App binary not found: ${appBinary}. Run npm run tauri:build first.`)
@@ -124,9 +131,11 @@ function sha256(filePath) {
 
 function signFile(filePath) {
   const privateKey = process.env.TAURI_SIGNING_PRIVATE_KEY
-  if (!privateKey) {
+  const privateKeyPath = process.env.TAURI_SIGNING_PRIVATE_KEY_PATH
+
+  if (!privateKey && !privateKeyPath) {
     throw new Error(
-      'TAURI_SIGNING_PRIVATE_KEY is not set. Configure it (path or content) before running release:portable so the update package can be signed.',
+      'TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH is not set. Configure one before running release:portable so the update package can be signed.',
     )
   }
 
@@ -136,29 +145,36 @@ function signFile(filePath) {
   }
 
   const password = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+  const tauriCli = join(root, 'node_modules', '@tauri-apps', 'cli', 'tauri.js')
+  const childEnv = { ...process.env }
+  if (!existsSync(tauriCli)) {
+    throw new Error(`Tauri CLI not found: ${tauriCli}. Run npm install first.`)
+  }
+
   const args = [
-    '--no-install',
-    'tauri',
     'signer',
     'sign',
-    '--private-key',
-    privateKey,
-    '--force',
   ]
 
-  if (password && password.length > 0) {
-    args.push('--password', password)
-  } else {
-    args.push('--no-password')
+  if (privateKeyPath) {
+    args.push('--private-key-path', privateKeyPath)
+    delete childEnv.TAURI_SIGNING_PRIVATE_KEY
+  } else if (privateKey && existsSync(privateKey)) {
+    args.push('--private-key-path', privateKey)
+    delete childEnv.TAURI_SIGNING_PRIVATE_KEY
+  } else if (privateKey) {
+    args.push('--private-key', privateKey)
+    delete childEnv.TAURI_SIGNING_PRIVATE_KEY_PATH
   }
+
+  args.push(`--password=${password ?? ''}`)
 
   args.push(filePath)
 
-  const result = spawnSync('npx', args, {
+  const result = spawnSync(process.execPath, [tauriCli, ...args], {
     cwd: root,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
-    env: process.env,
+    env: childEnv,
   })
 
   if (result.status !== 0) {
