@@ -47,6 +47,7 @@ export function AppContent({
   onDeleteGoal,
   onExport,
   onImport,
+  onStartBackupMigration,
   onCheckUpdates,
   onInstallUpdate,
   onOpenDownloadPage,
@@ -99,6 +100,7 @@ export function AppContent({
   onDeleteGoal: (id?: string) => void
   onExport: () => void
   onImport: () => void
+  onStartBackupMigration: () => void
   onCheckUpdates: () => void
   onInstallUpdate: () => void
   onOpenDownloadPage: () => void
@@ -153,6 +155,7 @@ export function AppContent({
         onDeleteGoal={onDeleteGoal}
         onExport={onExport}
         onImport={onImport}
+        onStartBackupMigration={onStartBackupMigration}
         onCheckUpdates={onCheckUpdates}
         onInstallUpdate={onInstallUpdate}
         onOpenDownloadPage={onOpenDownloadPage}

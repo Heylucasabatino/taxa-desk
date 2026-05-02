@@ -206,6 +206,12 @@ Test manuali richiesti:
 - errore backup: installazione bloccata;
 - messaggi privacy chiari.
 
+## Migrazione portable -> installer
+
+La migrazione dati e' documentata in `docs/migration.md`.
+
+Regola operativa: per passare da portable a installer, preferire sempre backup JSON, anteprima e backup pre-import. Non copiare direttamente `data/fondi-e-tasse.sqlite` da una cartella all'altra.
+
 ## Limite installer
 
 Il plugin updater Tauri aggiorna tramite gli artifact bundle supportati dalla piattaforma. Su Windows con target NSIS usa l’installer firmato e `installMode: "passive"`.

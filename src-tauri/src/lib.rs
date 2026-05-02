@@ -165,6 +165,25 @@ struct BackupResult {
     file_name: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupPreview {
+    source_path: String,
+    exported_at: String,
+    movements: usize,
+    goals: usize,
+    categories: usize,
+    deadlines: usize,
+    has_profile: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportFileResult {
+    backup_path: String,
+    preview: BackupPreview,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PortableUpdateManifest {
@@ -829,6 +848,73 @@ fn replace_data_from_backup(tx: &Transaction<'_>, payload: &BackupPayload) -> ru
     Ok(())
 }
 
+fn validate_backup_payload(payload: &BackupPayload) -> Result<(), String> {
+    if payload.meta.app != "fondi-e-tasse" || ![3, 4].contains(&payload.meta.version) {
+        return Err("Backup non valido o non compatibile.".to_string());
+    }
+
+    Ok(())
+}
+
+fn preview_backup_payload(source_path: &PathBuf, payload: &BackupPayload) -> BackupPreview {
+    BackupPreview {
+        source_path: source_path.to_string_lossy().to_string(),
+        exported_at: payload.meta.exported_at.clone(),
+        movements: payload.movements.len(),
+        goals: payload.goals.len(),
+        categories: payload.categories.len(),
+        deadlines: payload.deadlines.len(),
+        has_profile: payload.settings.id == "default",
+    }
+}
+
+fn read_backup_file(path: &str) -> Result<(PathBuf, BackupPayload), String> {
+    let source_path = PathBuf::from(path);
+
+    if !source_path.exists() {
+        return Err("File backup non trovato.".to_string());
+    }
+
+    if !source_path.is_file() {
+        return Err("Seleziona un file backup JSON, non una cartella.".to_string());
+    }
+
+    if source_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| !extension.eq_ignore_ascii_case("json"))
+        .unwrap_or(true)
+    {
+        return Err("Seleziona un file .json esportato da Taxa Desk.".to_string());
+    }
+
+    let content = fs::read_to_string(&source_path).map_err(to_message)?;
+    let payload = serde_json::from_str::<BackupPayload>(&content)
+        .map_err(|_| "Backup JSON non valido o non compatibile.".to_string())?;
+    validate_backup_payload(&payload)?;
+
+    Ok((source_path, payload))
+}
+
+fn import_validated_backup(
+    state: &tauri::State<'_, DbState>,
+    payload: &BackupPayload,
+) -> Result<BackupResult, String> {
+    let mut conn = state
+        .connection
+        .lock()
+        .map_err(|_| "Database bloccato.".to_string())?;
+    let before_payload = build_backup_payload(&conn).map_err(to_message)?;
+    let before_name = format!("pre-import-{}.json", Utc::now().format("%Y-%m-%d-%H%M%S"));
+    let before_backup = write_backup(&state.paths, &before_payload, &before_name)?;
+
+    let tx = conn.transaction().map_err(to_message)?;
+    replace_data_from_backup(&tx, payload).map_err(to_message)?;
+    tx.commit().map_err(to_message)?;
+
+    Ok(before_backup)
+}
+
 fn write_backup(
     paths: &PortablePaths,
     payload: &BackupPayload,
@@ -1135,25 +1221,38 @@ fn export_backup(state: tauri::State<'_, DbState>) -> Result<BackupResult, Strin
 
 #[tauri::command]
 fn import_backup(state: tauri::State<'_, DbState>, payload: BackupPayload) -> Result<(), String> {
-    if payload.meta.app != "fondi-e-tasse" || ![3, 4].contains(&payload.meta.version) {
-        return Err("Backup non valido o non compatibile.".to_string());
-    }
-
-    let mut conn = state
-        .connection
-        .lock()
-        .map_err(|_| "Database bloccato.".to_string())?;
-    let before_payload = build_backup_payload(&conn).map_err(to_message)?;
-    let before_name = format!("pre-import-{}.json", Utc::now().format("%Y-%m-%d-%H%M%S"));
-    write_backup(&state.paths, &before_payload, &before_name)?;
-
-    let tx = conn.transaction().map_err(to_message)?;
-    replace_data_from_backup(&tx, &payload).map_err(to_message)?;
-    tx.commit().map_err(to_message)?;
-    drop(conn);
+    validate_backup_payload(&payload)?;
+    import_validated_backup(&state, &payload)?;
     state.log("backup imported")?;
 
     Ok(())
+}
+
+#[tauri::command]
+fn inspect_backup_file(
+    state: tauri::State<'_, DbState>,
+    path: String,
+) -> Result<BackupPreview, String> {
+    let (source_path, payload) = read_backup_file(&path)?;
+    state.log("backup migration file inspected")?;
+
+    Ok(preview_backup_payload(&source_path, &payload))
+}
+
+#[tauri::command]
+fn import_backup_file(
+    state: tauri::State<'_, DbState>,
+    path: String,
+) -> Result<ImportFileResult, String> {
+    let (source_path, payload) = read_backup_file(&path)?;
+    let preview = preview_backup_payload(&source_path, &payload);
+    let backup = import_validated_backup(&state, &payload)?;
+    state.log("backup migration file imported")?;
+
+    Ok(ImportFileResult {
+        backup_path: backup.path,
+        preview,
+    })
 }
 
 #[tauri::command]
@@ -1412,6 +1511,8 @@ pub fn run() {
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_opener::init())?;
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_dialog::init())?;
 
             let state = DbState::open().map_err(|message| {
                 let error = std::io::Error::new(std::io::ErrorKind::Other, message);
@@ -1439,6 +1540,8 @@ pub fn run() {
             delete_category,
             export_backup,
             import_backup,
+            inspect_backup_file,
+            import_backup_file,
             create_auto_backup,
             check_portable_update,
             install_portable_update,

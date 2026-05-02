@@ -1,6 +1,6 @@
 [package]
 name = "fondi-e-tasse"
-version = "0.1.8"
+version = "0.1.9"
 description = "App desktop portable per entrate, tasse e scadenze"
 authors = ["Taxa Desk"]
 edition = "2021"
@@ -27,6 +27,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 

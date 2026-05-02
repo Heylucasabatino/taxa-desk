@@ -54,6 +54,7 @@ export function ViewSwitch({
   onDeleteGoal,
   onExport,
   onImport,
+  onStartBackupMigration,
   onCheckUpdates,
   onInstallUpdate,
   onOpenDownloadPage,
@@ -106,6 +107,7 @@ export function ViewSwitch({
   onDeleteGoal: (id?: string) => void
   onExport: () => void
   onImport: () => void
+  onStartBackupMigration: () => void
   onCheckUpdates: () => void
   onInstallUpdate: () => void
   onOpenDownloadPage: () => void
@@ -137,7 +139,7 @@ export function ViewSwitch({
         {activeView === 'deadlines' ? <DeadlinesView deadlines={deadlines} selectedYear={selectedYear} onAddDeadline={onAddDeadline} onUpdateDeadline={onUpdateDeadline} onDeleteDeadline={onDeleteDeadline} onToggleOccurrence={onToggleDeadlineOccurrence} /> : null}
         {activeView === 'analytics' ? <AnalyticsView movements={annualMovements} estimate={fiscalEstimate} preferences={preferences} onSavePreferences={onSavePreferences} /> : null}
         {activeView === 'profile' ? <ProfileView profile={profile} categories={categories} theme={theme} onChange={onProfileChange} onCreateCategory={onCreateCategory} onDeleteCategory={onDeleteCategory} onThemeChange={onThemeChange} onRestartSetup={onRestartSetup} /> : null}
-        {activeView === 'backup' ? <BackupView diagnostics={diagnostics} updateState={updateState} onExport={onExport} onImport={onImport} onCheckUpdates={onCheckUpdates} onInstallUpdate={onInstallUpdate} onOpenDownloadPage={onOpenDownloadPage} onOpenFeedbackPage={onOpenFeedbackPage} /> : null}
+        {activeView === 'backup' ? <BackupView diagnostics={diagnostics} updateState={updateState} onExport={onExport} onImport={onImport} onStartBackupMigration={onStartBackupMigration} onCheckUpdates={onCheckUpdates} onInstallUpdate={onInstallUpdate} onOpenDownloadPage={onOpenDownloadPage} onOpenFeedbackPage={onOpenFeedbackPage} /> : null}
       </section>
       {activeView === 'movements' && drawerOpen ? (
         <MovementDrawer movementType={movementType} movementForm={movementForm} isEditing={Boolean(editingMovementId)} categories={categories} errors={movementErrors} setMovementForm={setMovementForm} setType={setType} onClose={() => {

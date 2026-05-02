@@ -16,6 +16,9 @@ import { checkForAppUpdate, checkForPortableUpdate, formatUpdaterError, getDownl
 import { type GoalFormState } from './components/GoalForm'
 import { SetupView } from './views/SetupView'
 import type { Update } from '@tauri-apps/plugin-updater'
+import { open } from '@tauri-apps/plugin-dialog'
+import { MigrationPreviewDialog } from './components/MigrationPreviewDialog'
+import type { BackupFilePreview } from './lib/storage'
 const today = new Date().toISOString().slice(0, 10)
 const currentYear = new Date().getFullYear()
 const minYear = 1900
@@ -50,6 +53,8 @@ function App() {
   const [editingMovementId, setEditingMovementId] = useState<string | null>(null)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [pendingMigration, setPendingMigration] = useState<{ path: string; preview: BackupFilePreview } | null>(null)
+  const [migrationImporting, setMigrationImporting] = useState(false)
   const [diagnostics, setDiagnostics] = useState<PortableDiagnostics | null>(null)
   const [updateState, setUpdateState] = useState<UpdateState>(initialUpdateState)
   const [movementErrors, setMovementErrors] = useState<Partial<Record<keyof MovementFormState, string>>>({})
@@ -460,6 +465,41 @@ function App() {
       notify(error instanceof Error ? error.message : 'Impossibile aprire la pagina feedback.')
     }
   }
+  async function handleStartBackupMigration() {
+    if (!isTauriRuntime()) {
+      notify('La migrazione guidata è disponibile solo nell’app desktop.')
+      return
+    }
+
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: 'Backup Taxa Desk', extensions: ['json'] }],
+      })
+
+      if (!selected || Array.isArray(selected)) return
+
+      const preview = await appStorage.inspectBackupFile(selected)
+      setPendingMigration({ path: selected, preview })
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Impossibile leggere il backup selezionato.')
+    }
+  }
+  async function confirmBackupMigration() {
+    if (!pendingMigration) return
+
+    setMigrationImporting(true)
+    try {
+      const result = await appStorage.importBackupFile(pendingMigration.path)
+      setPendingMigration(null)
+      notify(`Migrazione completata. Backup pre-import creato in ${result.backupPath}`)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Migrazione non riuscita.')
+    } finally {
+      setMigrationImporting(false)
+    }
+  }
   async function handleImport(file?: File) {
     if (!file) return
 
@@ -497,6 +537,7 @@ function App() {
     onSubmitMovement: submitMovement, onSubmitGoal: submitGoal, onCancelGoalEdit: cancelGoalEdit, onEditGoal: editGoal,
     onDeleteGoal: removeGoal, onExport: handleExport, onImport: () => backupInputRef.current?.click(), onCheckUpdates: handleCheckUpdates,
     onInstallUpdate: handleInstallUpdate, onOpenDownloadPage: handleOpenDownloadPage, onOpenFeedbackPage: handleOpenFeedbackPage, onProfileChange: updateProfile,
+    onStartBackupMigration: handleStartBackupMigration,
     onSavePreferences: savePreferences, onAddDeadline: addDeadline, onUpdateDeadline: updateDeadline,
     onDeleteDeadline: removeDeadline, onToggleDeadlineOccurrence: toggleDeadlineOccurrence,
     onCreateCategory: createCategory, onDeleteCategory: removeCategory, onThemeChange: setTheme,
@@ -524,6 +565,13 @@ function App() {
       modals={
         pendingImport ? (
           <ImportPreviewDialog pendingImport={pendingImport} onCancel={() => setPendingImport(null)} onConfirm={confirmImport} />
+        ) : pendingMigration ? (
+          <MigrationPreviewDialog
+            preview={pendingMigration.preview}
+            importing={migrationImporting}
+            onCancel={() => setPendingMigration(null)}
+            onConfirm={confirmBackupMigration}
+          />
         ) : null
       }>
       <AppContent {...contentProps} />

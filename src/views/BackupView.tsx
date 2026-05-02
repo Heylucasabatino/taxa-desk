@@ -9,6 +9,7 @@ export function BackupView({
   updateState,
   onExport,
   onImport,
+  onStartBackupMigration,
   onCheckUpdates,
   onInstallUpdate,
   onOpenDownloadPage,
@@ -18,6 +19,7 @@ export function BackupView({
   updateState: UpdateState
   onExport: () => void
   onImport: () => void
+  onStartBackupMigration: () => void
   onCheckUpdates: () => void
   onInstallUpdate: () => void
   onOpenDownloadPage: () => void
@@ -101,6 +103,23 @@ export function BackupView({
           </div>
         </section>
       </div>
+
+      <section className="section-panel migration-panel">
+        <div className="section-panel-header">
+          <div>
+            <h2>Migrazione dati</h2>
+            <p>Porta nell’installazione attuale un backup creato da una precedente cartella portable.</p>
+          </div>
+        </div>
+        <p className="feedback-privacy">
+          La migrazione legge solo il file locale scelto da te. Prima dell’import Taxa Desk crea un backup dell’archivio attuale.
+        </p>
+        <div className="backup-action-list">
+          <Button appearance="primary" icon={<AppIcon icon={ArrowUpFromLine} size={16} />} onClick={onStartBackupMigration}>
+            Importa dati da backup
+          </Button>
+        </div>
+      </section>
 
       <section className="section-panel feedback-panel">
         <div className="section-panel-header">

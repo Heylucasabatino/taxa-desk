@@ -38,6 +38,21 @@ export type PortableDiagnostics = {
   writable: boolean
 }
 
+export type BackupFilePreview = {
+  sourcePath: string
+  exportedAt: string
+  movements: number
+  goals: number
+  categories: number
+  deadlines: number
+  hasProfile: boolean
+}
+
+export type ImportFileResult = {
+  backupPath: string
+  preview: BackupFilePreview
+}
+
 type BackupResult = {
   path: string
   fileName: string
@@ -67,6 +82,8 @@ export type AppStorage = {
   deleteCategory: (id: string) => Promise<void>
   exportBackup: () => Promise<string | undefined>
   importBackup: (payload: unknown) => Promise<void>
+  inspectBackupFile: (path: string) => Promise<BackupFilePreview>
+  importBackupFile: (path: string) => Promise<ImportFileResult>
   parseBackupPayload: (payload: unknown) => BackupPayload
   getDiagnostics: () => Promise<PortableDiagnostics | null>
   flushAutoBackup: () => Promise<void>
@@ -162,6 +179,12 @@ const dexieStorage: AppStorage = {
     return undefined
   },
   importBackup: withChange((payload: unknown) => importDexieBackup(payload)),
+  inspectBackupFile: async () => {
+    throw new Error('La migrazione guidata è disponibile solo nell’app desktop.')
+  },
+  importBackupFile: async () => {
+    throw new Error('La migrazione guidata è disponibile solo nell’app desktop.')
+  },
   parseBackupPayload,
   getDiagnostics: async () => null,
   flushAutoBackup: async () => undefined,
@@ -229,6 +252,14 @@ const tauriStorage: AppStorage = {
     await invoke('import_backup', { payload: parsed })
     scheduleTauriAutoBackup()
     notifyStorageChanged()
+  },
+  inspectBackupFile: (path: string) => invoke<BackupFilePreview>('inspect_backup_file', { path }),
+  importBackupFile: async (path: string) => {
+    const result = await invoke<ImportFileResult>('import_backup_file', { path })
+    scheduleTauriAutoBackup()
+    notifyStorageChanged()
+
+    return result
   },
   parseBackupPayload,
   getDiagnostics: () => invoke<PortableDiagnostics>('portable_diagnostics'),
