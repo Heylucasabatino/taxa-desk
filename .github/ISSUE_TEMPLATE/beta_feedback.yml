@@ -1,0 +1,56 @@
+name: Feedback beta
+description: Racconta com’è andata la prova di Taxa Desk
+title: "[Feedback beta]: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per provare Taxa Desk. Non inserire dati fiscali reali, backup completi, contenuti del database SQLite o informazioni personali sensibili.
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Profilo di utilizzo
+      options:
+        - Libero professionista / partita IVA
+        - Studio o piccolo team
+        - Valutazione personale
+        - Altro
+    validations:
+      required: true
+  - type: textarea
+    id: useful
+    attributes:
+      label: Cosa ti è sembrato utile?
+      description: Indica le parti che useresti davvero.
+    validations:
+      required: true
+  - type: textarea
+    id: unclear
+    attributes:
+      label: Cosa non è chiaro o ti blocca?
+    validations:
+      required: false
+  - type: textarea
+    id: missing
+    attributes:
+      label: Cosa manca per renderlo più utile?
+    validations:
+      required: false
+  - type: dropdown
+    id: value
+    attributes:
+      label: Quanto valore ti darebbe se fosse stabile?
+      options:
+        - Lo userei spesso
+        - Lo userei ogni tanto
+        - Mi interessa, ma mancano funzioni importanti
+        - Non fa per me
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Note libere
+    validations:
+      required: false

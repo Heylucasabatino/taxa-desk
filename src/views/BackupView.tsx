@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Database, DownloadCloud, ExternalLink, FolderOpen, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Database, DownloadCloud, ExternalLink, FolderOpen, MessageSquareText, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button } from '@fluentui/react-components'
 import type { PortableDiagnostics } from '../lib/storage'
 import type { UpdateState } from '../lib/updates'
@@ -12,6 +12,7 @@ export function BackupView({
   onCheckUpdates,
   onInstallUpdate,
   onOpenDownloadPage,
+  onOpenFeedbackPage,
 }: {
   diagnostics: PortableDiagnostics | null
   updateState: UpdateState
@@ -20,6 +21,7 @@ export function BackupView({
   onCheckUpdates: () => void
   onInstallUpdate: () => void
   onOpenDownloadPage: () => void
+  onOpenFeedbackPage: () => void
 }) {
   const busy = ['checking', 'backup', 'downloading', 'installing'].includes(updateState.phase)
   const canInstall = updateState.phase === 'available'
@@ -99,6 +101,23 @@ export function BackupView({
           </div>
         </section>
       </div>
+
+      <section className="section-panel feedback-panel">
+        <div className="section-panel-header">
+          <div>
+            <h2>Feedback beta</h2>
+            <p>Taxa Desk è gratuito in beta. Le segnalazioni reali aiutano a scegliere cosa migliorare.</p>
+          </div>
+        </div>
+        <p className="feedback-privacy">
+          Il feedback apre una pagina esterna. Non allegare backup, database SQLite o dati fiscali reali.
+        </p>
+        <div className="backup-action-list">
+          <Button appearance="secondary" icon={<AppIcon icon={MessageSquareText} size={16} />} onClick={onOpenFeedbackPage}>
+            Invia feedback
+          </Button>
+        </div>
+      </section>
 
       <section className="section-panel update-panel">
         <div className="section-panel-header">

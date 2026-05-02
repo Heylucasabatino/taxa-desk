@@ -2,7 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: Download ultima versione
     url: https://github.com/Heylucasabatino/taxa-desk/releases/latest
-    about: Scarica l'ultima release pubblica di Taxa Desk.
+    about: Scarica l’ultima release pubblica di Taxa Desk.
+  - name: Feedback beta
+    url: https://github.com/Heylucasabatino/taxa-desk/issues/new?template=beta_feedback.yml
+    about: Racconta com’è andata la prova di Taxa Desk.
   - name: Privacy
     url: https://github.com/Heylucasabatino/taxa-desk/blob/master/PRIVACY.md
     about: Leggi come Taxa Desk gestisce i dati locali.

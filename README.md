@@ -60,6 +60,14 @@ Taxa Desk è scaricabile e utilizzabile gratuitamente durante la beta. Non ci so
 
 Il codice resta source-available/proprietario: puoi consultare il repository, segnalare problemi e proporre miglioramenti, ma non puoi redistribuire, vendere o pubblicare versioni modificate senza autorizzazione scritta.
 
+## Feedback beta
+
+Chi prova Taxa Desk può inviare feedback dalla sezione `Dati & backup` dell’app, tramite il pulsante `Invia feedback`.
+
+Il feedback apre una pagina GitHub precompilata. Non inserire dati fiscali reali, backup completi, contenuti del database SQLite o informazioni personali sensibili.
+
+Per usare un form esterno al posto di GitHub Issues, imposta `VITE_FEEDBACK_URL` in fase di build.
+
 ## Dati locali e backup
 
 La build desktop Tauri usa un database SQLite locale accanto all’eseguibile:

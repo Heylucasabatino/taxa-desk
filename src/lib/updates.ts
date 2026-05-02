@@ -3,6 +3,8 @@ import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updat
 import { openUrl } from '@tauri-apps/plugin-opener'
 
 export const RELEASES_LATEST_URL = 'https://github.com/Heylucasabatino/taxa-desk/releases/latest'
+export const FEEDBACK_URL = import.meta.env.VITE_FEEDBACK_URL
+  ?? 'https://github.com/Heylucasabatino/taxa-desk/issues/new?template=beta_feedback.yml'
 
 export type UpdatePhase =
   | 'idle'
@@ -50,12 +52,20 @@ export async function checkForAppUpdate() {
 }
 
 export async function openLatestReleasePage() {
+  await openExternalUrl(RELEASES_LATEST_URL)
+}
+
+export async function openFeedbackPage() {
+  await openExternalUrl(FEEDBACK_URL)
+}
+
+async function openExternalUrl(url: string) {
   if (isTauriRuntime()) {
-    await openUrl(RELEASES_LATEST_URL)
+    await openUrl(url)
     return
   }
 
-  window.open(RELEASES_LATEST_URL, '_blank', 'noopener,noreferrer')
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 export function toUpdateState(update: Update, currentVersion: string): UpdateState {

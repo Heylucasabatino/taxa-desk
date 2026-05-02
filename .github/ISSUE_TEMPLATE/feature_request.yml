@@ -11,7 +11,7 @@ body:
     id: problem
     attributes:
       label: Problema da risolvere
-      description: Quale attivita' diventa piu' semplice con questa funzione?
+      description: Quale attività diventa più semplice con questa funzione?
     validations:
       required: true
   - type: textarea

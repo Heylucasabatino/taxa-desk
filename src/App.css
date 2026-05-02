@@ -3053,6 +3053,7 @@ textarea {
 
 .update-notes,
 .update-privacy,
+.feedback-privacy,
 .update-error {
   border-top: 1px solid var(--border);
   margin: 0;
@@ -3074,7 +3075,8 @@ textarea {
   white-space: pre-wrap;
 }
 
-.update-privacy {
+.update-privacy,
+.feedback-privacy {
   color: var(--muted);
 }
 
