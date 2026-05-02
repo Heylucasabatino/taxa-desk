@@ -48,9 +48,13 @@ Lo ZIP update contiene solo file applicativi sotto `app/`:
 ```text
 app/
   Taxa Desk.exe
+  Fondi e Tasse.exe
+  fondi-e-tasse.exe
   Taxa Desk Agent.exe
   LEGGIMI.txt
 ```
+
+I due nomi legacy `Fondi e Tasse.exe` e `fondi-e-tasse.exe` servono per migrare build portable gia' distribuite: gli helper vecchi riaprono l'eseguibile con lo stesso nome che ha lanciato l'app, quindi il pacchetto update deve sovrascrivere anche quei nomi.
 
 Non deve contenere `data/`, `backups/` o `logs/`.
 

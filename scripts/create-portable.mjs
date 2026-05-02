@@ -61,6 +61,8 @@ writeFileSync(join(appDir, 'LEGGIMI.txt'), readmeText(version), 'utf8')
 
 mkdirSync(updateAppDir, { recursive: true })
 copyFileSync(appBinary, join(updateAppDir, 'Taxa Desk.exe'))
+copyFileSync(appBinary, join(updateAppDir, 'Fondi e Tasse.exe'))
+copyFileSync(appBinary, join(updateAppDir, 'fondi-e-tasse.exe'))
 copyFileSync(updaterBinary, join(updateAppDir, 'Taxa Desk Agent.exe'))
 writeFileSync(join(updateAppDir, 'LEGGIMI.txt'), readmeText(version), 'utf8')
 
