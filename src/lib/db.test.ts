@@ -49,4 +49,18 @@ describe('parseBackupPayload', () => {
     expect(payload.categories[0].name).toBe('Altro')
     expect(payload.categories[0].type).toBe('income')
   })
+
+  it('normalizza stati e ricorrenze non validi', () => {
+    const payload = parseBackupPayload({
+      movements: [
+        { type: 'income', status: 'paid' },
+        { type: 'expense', status: 'unknown' },
+      ],
+      deadlines: [{ recurrence: 'weekly' }],
+    })
+
+    expect(payload.movements[0].status).toBe('paid')
+    expect(payload.movements[1].status).toBe('paid')
+    expect(payload.deadlines[0].recurrence).toBe('none')
+  })
 })

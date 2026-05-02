@@ -26,10 +26,10 @@ if (!existsSync(bundleDir)) {
 
 const installers = readdirSync(bundleDir)
   .filter((name) => name.endsWith('.exe') && existsSync(join(bundleDir, `${name}.sig`)))
-const installerName = installers.find((name) => name.includes(`_${version}_`)) ?? installers[0]
+const installerName = installers.find((name) => name.includes(`_${version}_`))
 
 if (!installerName) {
-  throw new Error(`No NSIS installer with .sig found in ${bundleDir}`)
+  throw new Error(`No NSIS installer with .sig for version ${version} found in ${bundleDir}`)
 }
 
 const signature = readFileSync(join(bundleDir, `${installerName}.sig`), 'utf8').trim()

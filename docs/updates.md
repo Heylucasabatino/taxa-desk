@@ -27,12 +27,12 @@ Manifest:
 
 ```json
 {
-  "version": "0.1.3",
+  "version": "X.Y.Z",
   "notes": "Correzioni e miglioramenti.",
   "pubDate": "2026-05-02T10:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/v0.1.3/Taxa.Desk_0.1.3_windows_x64_update.zip",
+      "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/vX.Y.Z/Taxa.Desk_X.Y.Z_windows_x64_update.zip",
       "sha256": "<sha256 dello zip update>",
       "size": 1234567,
       "signature": "untrusted comment: ...\\nRWQl2pksntXC...\\ntrusted comment: timestamp:...\\n..."
@@ -53,7 +53,7 @@ app/
   LEGGIMI.txt
 ```
 
-Il nome legacy `fondi-e-tasse.exe` serve per migrare build gia' distribuite via installer o portable: gli helper vecchi riaprono l'eseguibile con lo stesso nome che ha lanciato l'app, quindi il pacchetto update deve sovrascrivere anche quel nome.
+Il nome legacy `fondi-e-tasse.exe` serve per migrare build già distribuite via installer o portable: gli helper vecchi riaprono l'eseguibile con lo stesso nome che ha lanciato l'app, quindi il pacchetto update deve sovrascrivere anche quel nome.
 
 Non deve contenere `data/`, `backups/` o `logs/`.
 
@@ -137,7 +137,7 @@ npm run tauri:build
 
 ```powershell
 $env:GITHUB_REPOSITORY="Heylucasabatino/taxa-desk"
-$env:RELEASE_TAG="v0.1.2"
+$env:RELEASE_TAG="vX.Y.Z"
 $env:RELEASE_NOTES="Correzioni e miglioramenti."
 $env:VITE_FEEDBACK_URL="https://<form-pubblico-feedback>"
 npm run release:latest-json
@@ -150,7 +150,7 @@ $env:CARGO_TARGET_DIR="$env:USERPROFILE\.tauri\fondi-e-tasse\target"
 npm run release:latest-json
 ```
 
-8. Pubblica una GitHub Release con tag coerente con la versione, ad esempio `v0.1.2`.
+8. Pubblica una GitHub Release con tag coerente con la versione, ad esempio `vX.Y.Z`.
 9. Carica sulla release:
    - installer NSIS `.exe`;
    - firma `.exe.sig`;
@@ -166,13 +166,13 @@ Per static GitHub Releases il manifest deve contenere una piattaforma Windows va
 
 ```json
 {
-  "version": "0.1.2",
+  "version": "X.Y.Z",
   "notes": "Correzioni e miglioramenti.",
   "pub_date": "2026-05-01T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "<contenuto del file .sig>",
-      "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/v0.1.2/Taxa.Desk_0.1.2_x64-setup.exe"
+      "url": "https://github.com/Heylucasabatino/taxa-desk/releases/download/vX.Y.Z/Taxa.Desk_X.Y.Z_x64-setup.exe"
     }
   }
 }
@@ -184,9 +184,9 @@ Per static GitHub Releases il manifest deve contenere una piattaforma Windows va
 
 Scenario minimo da provare prima della distribuzione:
 
-1. Installa una versione precedente, per esempio `0.1.0`.
+1. Installa una versione precedente, per esempio `X.Y.Z-1`.
 2. Crea alcuni dati locali in `data/fondi-e-tasse.sqlite`.
-3. Pubblica `latest.json` con versione superiore, per esempio `0.1.2`.
+3. Pubblica `latest.json` con versione superiore, per esempio `X.Y.Z`.
 4. Apri `Dati & backup`.
 5. Premi `Verifica aggiornamenti`.
 6. Controlla che vengano mostrati versione installata, nuova versione e note.
@@ -208,7 +208,7 @@ Test manuali richiesti:
 
 ## Migrazione portable -> installer
 
-La migrazione dati e' documentata in `docs/migration.md`.
+La migrazione dati è documentata in `docs/migration.md`.
 
 Regola operativa: per passare da portable a installer, preferire sempre backup JSON, anteprima e backup pre-import. Non copiare direttamente `data/fondi-e-tasse.sqlite` da una cartella all'altra.
 

@@ -359,11 +359,17 @@ function normalizeMovement(movement: Partial<Movement>): Movement {
     description: movement.description ?? 'Movimento',
     category: movement.category ?? 'Altro',
     amount: Number(movement.amount) || 0,
-    status:
-      movement.status ??
-      (type === 'income' ? 'collected' : 'paid'),
+    status: normalizeMovementStatus(movement.status, type),
     notes: movement.notes ?? '',
   }
+}
+
+function normalizeMovementStatus(status: unknown, type: Movement['type']): Movement['status'] {
+  if (status === 'collected' || status === 'pending' || status === 'paid' || status === 'to_pay') {
+    return status
+  }
+
+  return type === 'income' ? 'collected' : 'paid'
 }
 
 function normalizeGoal(goal: Partial<Goal>): Goal {
@@ -406,12 +412,22 @@ function normalizeDeadlines(deadlines?: PersonalDeadline[]): PersonalDeadline[] 
     title: deadline.title || 'Scadenza personale',
     date: deadline.date ?? new Date().toISOString().slice(0, 10),
     category: deadline.category ?? 'personal',
-    recurrence: deadline.recurrence ?? 'none',
+    recurrence: normalizeDeadlineRecurrence(deadline.recurrence),
     notes: deadline.notes ?? '',
     completedOccurrences: Array.isArray(deadline.completedOccurrences)
       ? deadline.completedOccurrences
       : [],
   }))
+}
+
+function normalizeDeadlineRecurrence(
+  recurrence: unknown,
+): PersonalDeadline['recurrence'] {
+  if (recurrence === 'monthly' || recurrence === 'yearly') {
+    return recurrence
+  }
+
+  return 'none'
 }
 
 function normalizePreferences(preferences?: Partial<StoredPreferences>): StoredPreferences {

@@ -17,13 +17,13 @@ Scarica l’ultima versione da:
 Per la beta è consigliato il pacchetto portable:
 
 ```text
-Taxa.Desk_0.1.3_windows_x64_portable.zip
+Taxa.Desk_X.Y.Z_windows_x64_portable.zip
 ```
 
 L’installer Windows resta disponibile come canale alternativo:
 
 ```text
-Taxa.Desk_0.1.3_x64-setup.exe
+Taxa.Desk_X.Y.Z_x64-setup.exe
 ```
 
 ## Uso portable
