@@ -4,14 +4,15 @@ Il tuo spazio locale per entrate, tasse e scadenze.
 
 ![Versione](https://img.shields.io/github/v/release/Heylucasabatino/taxa-desk?label=release)
 ![Piattaforma](https://img.shields.io/badge/piattaforma-Windows%2010%2F11%20x64-0f766e)
-![Licenza](https://img.shields.io/badge/licenza-proprietaria-lightgrey)
+![Uso](https://img.shields.io/badge/uso-gratuito%20in%20beta-0f766e)
+![Licenza](https://img.shields.io/badge/codice-source--available-lightgrey)
 ![Privacy](https://img.shields.io/badge/privacy-dati%20locali-0f766e)
 
 ![Anteprima Taxa Desk](docs/screenshots/taxa-desk-overview.svg)
 
 Taxa Desk è un’app desktop locale per Windows pensata per liberi professionisti e piccoli studi che vogliono tenere sotto controllo incassi, spese, accantonamenti fiscali/previdenziali, scadenze e obiettivi di risparmio senza spostare i propri dati su un cloud applicativo.
 
-> Stato progetto: beta/early access. Le stime fiscali sono orientative e non sostituiscono commercialista, Agenzia Entrate o cassa previdenziale.
+> Stato progetto: beta gratuita. Le stime fiscali sono orientative e non sostituiscono commercialista, Agenzia Entrate o cassa previdenziale.
 
 ## Per chi è
 
@@ -49,9 +50,15 @@ La release pubblica più recente è disponibile nella pagina:
 
 [GitHub Releases](https://github.com/Heylucasabatino/taxa-desk/releases/latest)
 
-Attualmente Taxa Desk è disponibile per Windows 10/11 x64. macOS e Linux non sono pianificati per la beta.
+Attualmente Taxa Desk è gratuito in beta e disponibile per Windows 10/11 x64. macOS e Linux non sono pianificati per la beta.
 
 Prima di usare una nuova versione con dati reali, crea o verifica un backup JSON dalla sezione `Dati & backup`.
+
+## Beta libera
+
+Taxa Desk è scaricabile e utilizzabile gratuitamente durante la beta. Non ci sono limiti artificiali su movimenti, obiettivi, backup o aggiornamenti.
+
+Il codice resta source-available/proprietario: puoi consultare il repository, segnalare problemi e proporre miglioramenti, ma non puoi redistribuire, vendere o pubblicare versioni modificate senza autorizzazione scritta.
 
 ## Dati locali e backup
 
@@ -122,4 +129,4 @@ La build Tauri richiede la toolchain Rust e, su Windows, Microsoft Edge WebView2
 
 Copyright (c) 2026 Luca Sabatino. Tutti i diritti riservati.
 
-Il codice e gli asset di Taxa Desk non possono essere copiati, modificati, redistribuiti o usati commercialmente senza autorizzazione scritta. Vedi [LICENSE](LICENSE).
+Taxa Desk è gratuito in beta per uso personale e valutazione. Il codice e gli asset restano protetti: non possono essere modificati, redistribuiti o usati commercialmente senza autorizzazione scritta. Vedi [LICENSE](LICENSE).

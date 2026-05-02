@@ -1,13 +1,35 @@
-Taxa Desk Proprietary License
+Taxa Desk Free Beta License
 
 Copyright (c) 2026 Luca Sabatino. All rights reserved.
 
-Taxa Desk, including its source code, design, documentation, bundled assets and release artifacts, is proprietary software.
+Taxa Desk, including its source code, design, documentation, bundled assets and release artifacts, is proprietary source-available software.
 
-You may view this repository for evaluation, review and issue reporting only. You may not copy, modify, redistribute, sublicense, sell, rent, host, package, publish or use this software or any substantial portion of it for commercial purposes without prior written permission from the copyright holder.
+Free beta use
 
-No rights are granted except those expressly stated in this license.
+You may download and use official Taxa Desk beta releases free of charge for personal evaluation and personal operational use.
 
-This software is provided for beta evaluation "as is", without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose and non-infringement. The author is not liable for any claim, damage, fiscal decision, data loss or other liability arising from use of the software.
+You may view this repository for evaluation, review, learning, issue reporting and contribution proposals.
+
+Restrictions
+
+You may not, without prior written permission from the copyright holder:
+
+- copy, modify or publish modified versions of Taxa Desk;
+- redistribute, sublicense, sell, rent, host, package or rebrand Taxa Desk;
+- use Taxa Desk, its code or its assets as part of a competing commercial product;
+- remove copyright, license, privacy or attribution notices;
+- distribute unofficial builds or installers.
+
+No trademark or branding rights are granted.
+
+No warranty
+
+This software is provided in beta "as is", without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose and non-infringement.
+
+The author is not liable for any claim, damage, fiscal decision, data loss or other liability arising from use of the software.
 
 Taxa Desk is not accounting, tax, legal or financial advice. Any tax estimate must be verified with qualified professionals and official sources before taking action.
+
+Future licensing
+
+The beta is currently free. Future versions may use a different commercial or donation-supported model. Any future change will not remove rights already granted for official releases downloaded under this license.
