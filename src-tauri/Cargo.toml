@@ -1,6 +1,6 @@
 [package]
 name = "fondi-e-tasse"
-version = "0.1.9"
+version = "0.1.10"
 description = "App desktop portable per entrate, tasse e scadenze"
 authors = ["Taxa Desk"]
 edition = "2021"
@@ -13,6 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [[bin]]
 name = "taxa-desk-updater"
 path = "src/bin/taxa-desk-updater.rs"
+test = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

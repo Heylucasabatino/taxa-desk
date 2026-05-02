@@ -1,6 +1,6 @@
 use chrono::{Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fs, io::Write, path::PathBuf, process::Command, sync::Mutex, time::Duration};
 use tauri::Manager;
@@ -145,6 +145,85 @@ struct BackupPayload {
     deadlines: Vec<PersonalDeadline>,
     #[serde(default = "default_preferences")]
     preferences: AppPreferences,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawBackupPayload {
+    movements: Option<Vec<RawMovement>>,
+    incomes: Option<Vec<RawMovement>>,
+    expenses: Option<Vec<RawMovement>>,
+    goals: Option<Vec<RawGoal>>,
+    settings: Option<RawStoredTaxProfile>,
+    profile: Option<RawStoredTaxProfile>,
+    categories: Option<Vec<RawCategory>>,
+    deadlines: Option<Vec<RawPersonalDeadline>>,
+    preferences: Option<RawAppPreferences>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawMovement {
+    id: Option<String>,
+    date: Option<String>,
+    #[serde(rename = "type")]
+    movement_type: Option<String>,
+    description: Option<String>,
+    category: Option<String>,
+    amount: Option<f64>,
+    status: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawGoal {
+    id: Option<String>,
+    name: Option<String>,
+    target_amount: Option<f64>,
+    saved_amount: Option<f64>,
+    target_date: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawCategory {
+    id: Option<String>,
+    name: Option<String>,
+    #[serde(rename = "type")]
+    category_type: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawPersonalDeadline {
+    id: Option<String>,
+    title: Option<String>,
+    date: Option<String>,
+    category: Option<String>,
+    recurrence: Option<String>,
+    notes: Option<String>,
+    completed_occurrences: Option<Vec<String>>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawAppPreferences {
+    safety_threshold_amount: Option<f64>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawStoredTaxProfile {
+    taxable_coefficient: Option<f64>,
+    substitute_tax_rate: Option<f64>,
+    pension_rate: Option<f64>,
+    pension_minimum: Option<f64>,
+    integrative_rate: Option<f64>,
+    integrative_minimum: Option<f64>,
+    activity_year: Option<i64>,
+    setup_completed: Option<bool>,
+    enforce_minimums_when_empty: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -848,6 +927,183 @@ fn replace_data_from_backup(tx: &Transaction<'_>, payload: &BackupPayload) -> ru
     Ok(())
 }
 
+fn parse_backup_payload(content: &str) -> Result<BackupPayload, String> {
+    let value = serde_json::from_str::<serde_json::Value>(content)
+        .map_err(|_| "Backup JSON non valido o non compatibile.".to_string())?;
+    let candidate = deserialize_backup_value::<RawBackupPayload>(&value)?;
+    normalize_backup_payload(candidate)
+}
+
+fn deserialize_backup_value<T: DeserializeOwned>(
+    value: &serde_json::Value,
+) -> Result<T, String> {
+    serde_json::from_value(value.clone())
+        .map_err(|_| "Backup JSON non valido o non compatibile.".to_string())
+}
+
+fn normalize_backup_payload(candidate: RawBackupPayload) -> Result<BackupPayload, String> {
+    let today = Utc::now().date_naive().to_string();
+
+    let movements = if let Some(raw_movements) = candidate.movements {
+        raw_movements
+            .into_iter()
+            .map(|movement| normalize_movement(movement, None, &today))
+            .collect()
+    } else {
+        let mut legacy_movements = Vec::new();
+
+        for movement in candidate.incomes.unwrap_or_default() {
+            legacy_movements.push(normalize_movement(movement, Some("income"), &today));
+        }
+
+        for movement in candidate.expenses.unwrap_or_default() {
+            legacy_movements.push(normalize_movement(movement, Some("expense"), &today));
+        }
+
+        legacy_movements
+    };
+
+    if movements.is_empty() {
+        return Err("Il file non contiene movimenti importabili.".to_string());
+    }
+
+    Ok(BackupPayload {
+        meta: BackupMeta {
+            app: "fondi-e-tasse".to_string(),
+            version: 4,
+            exported_at: Utc::now().to_rfc3339(),
+        },
+        movements,
+        goals: candidate
+            .goals
+            .unwrap_or_default()
+            .into_iter()
+            .map(|goal| normalize_goal(goal, &today))
+            .collect(),
+        settings: normalize_settings(candidate.profile.or(candidate.settings)),
+        categories: normalize_categories(candidate.categories),
+        deadlines: candidate
+            .deadlines
+            .unwrap_or_default()
+            .into_iter()
+            .map(|deadline| normalize_deadline(deadline, &today))
+            .collect(),
+        preferences: normalize_preferences(candidate.preferences),
+    })
+}
+
+fn normalize_movement(movement: RawMovement, fallback_type: Option<&str>, today: &str) -> Movement {
+    let movement_type = match movement.movement_type.as_deref().or(fallback_type) {
+        Some("expense") => "expense",
+        _ => "income",
+    }
+    .to_string();
+
+    let default_status = if movement_type == "income" {
+        "collected"
+    } else {
+        "paid"
+    };
+
+    Movement {
+        id: Some(value_or_uuid(movement.id)),
+        date: value_or_default(movement.date, today),
+        movement_type,
+        description: value_or_default(movement.description, "Movimento"),
+        category: value_or_default(movement.category, "Altro"),
+        amount: movement.amount.unwrap_or(0.0),
+        status: value_or_default(movement.status, default_status),
+        notes: Some(movement.notes.unwrap_or_default()),
+    }
+}
+
+fn normalize_goal(goal: RawGoal, today: &str) -> Goal {
+    Goal {
+        id: Some(value_or_uuid(goal.id)),
+        name: value_or_default(goal.name, "Obiettivo"),
+        target_amount: goal.target_amount.unwrap_or(0.0),
+        saved_amount: goal.saved_amount.unwrap_or(0.0),
+        target_date: value_or_default(goal.target_date, today),
+    }
+}
+
+fn normalize_categories(categories: Option<Vec<RawCategory>>) -> Vec<Category> {
+    let categories = categories.unwrap_or_default();
+
+    if categories.is_empty() {
+        return default_categories();
+    }
+
+    categories
+        .into_iter()
+        .map(|category| Category {
+            id: Some(value_or_uuid(category.id)),
+            name: value_or_default(category.name, "Altro"),
+            category_type: match category.category_type.as_deref() {
+                Some("expense") => "expense".to_string(),
+                _ => "income".to_string(),
+            },
+        })
+        .collect()
+}
+
+fn normalize_deadline(deadline: RawPersonalDeadline, today: &str) -> PersonalDeadline {
+    PersonalDeadline {
+        id: Some(value_or_uuid(deadline.id)),
+        title: value_or_default(deadline.title, "Scadenza personale"),
+        date: value_or_default(deadline.date, today),
+        category: value_or_default(deadline.category, "personal"),
+        recurrence: value_or_default(deadline.recurrence, "none"),
+        notes: Some(deadline.notes.unwrap_or_default()),
+        completed_occurrences: Some(deadline.completed_occurrences.unwrap_or_default()),
+    }
+}
+
+fn normalize_settings(settings: Option<RawStoredTaxProfile>) -> StoredTaxProfile {
+    let settings = settings.unwrap_or_default();
+    let defaults = default_stored_profile();
+
+    StoredTaxProfile {
+        id: "default".to_string(),
+        taxable_coefficient: settings
+            .taxable_coefficient
+            .unwrap_or(defaults.taxable_coefficient),
+        substitute_tax_rate: settings
+            .substitute_tax_rate
+            .unwrap_or(defaults.substitute_tax_rate),
+        pension_rate: settings.pension_rate.unwrap_or(defaults.pension_rate),
+        pension_minimum: settings.pension_minimum.unwrap_or(defaults.pension_minimum),
+        integrative_rate: settings
+            .integrative_rate
+            .unwrap_or(defaults.integrative_rate),
+        integrative_minimum: settings
+            .integrative_minimum
+            .unwrap_or(defaults.integrative_minimum),
+        activity_year: settings.activity_year.unwrap_or(defaults.activity_year),
+        setup_completed: settings.setup_completed.or(defaults.setup_completed),
+        enforce_minimums_when_empty: settings
+            .enforce_minimums_when_empty
+            .or(defaults.enforce_minimums_when_empty),
+    }
+}
+
+fn normalize_preferences(preferences: Option<RawAppPreferences>) -> AppPreferences {
+    AppPreferences {
+        id: Some("default".to_string()),
+        safety_threshold_amount: preferences.and_then(|value| value.safety_threshold_amount),
+    }
+}
+
+fn value_or_uuid(value: Option<String>) -> String {
+    value_or_default(value, &Uuid::new_v4().to_string())
+}
+
+fn value_or_default(value: Option<String>, default: &str) -> String {
+    value
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| default.to_string())
+}
+
 fn validate_backup_payload(payload: &BackupPayload) -> Result<(), String> {
     if payload.meta.app != "fondi-e-tasse" || ![3, 4].contains(&payload.meta.version) {
         return Err("Backup non valido o non compatibile.".to_string());
@@ -889,8 +1145,7 @@ fn read_backup_file(path: &str) -> Result<(PathBuf, BackupPayload), String> {
     }
 
     let content = fs::read_to_string(&source_path).map_err(to_message)?;
-    let payload = serde_json::from_str::<BackupPayload>(&content)
-        .map_err(|_| "Backup JSON non valido o non compatibile.".to_string())?;
+    let payload = parse_backup_payload(&content)?;
     validate_backup_payload(&payload)?;
 
     Ok((source_path, payload))
@@ -1501,6 +1756,69 @@ fn window_toggle_maximize(window: tauri::Window) -> Result<(), String> {
 #[tauri::command]
 fn window_close(window: tauri::Window) -> Result<(), String> {
     window.close().map_err(to_message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_backup_payload_accepts_legacy_incomes_expenses() {
+        let payload = parse_backup_payload(
+            r#"
+            {
+              "incomes": [
+                { "date": "2026-01-01", "description": "Seduta", "amount": 100, "category": "Sedute" }
+              ],
+              "expenses": [
+                { "date": "2026-01-02", "description": "Software", "amount": 20, "category": "Software" }
+              ],
+              "goals": [],
+              "profile": {}
+            }
+            "#,
+        )
+        .expect("legacy backup should be normalized");
+
+        assert_eq!(payload.meta.version, 4);
+        assert_eq!(payload.movements.len(), 2);
+        assert_eq!(payload.movements[0].movement_type, "income");
+        assert_eq!(payload.movements[0].status, "collected");
+        assert_eq!(payload.movements[1].movement_type, "expense");
+        assert_eq!(payload.movements[1].status, "paid");
+    }
+
+    #[test]
+    fn parse_backup_payload_accepts_sparse_movements_backup() {
+        let payload = parse_backup_payload(
+            r#"
+            {
+              "meta": { "app": "fondi-e-tasse", "version": 2, "exportedAt": "2026-01-01T00:00:00.000Z" },
+              "movements": [
+                { "date": "2026-01-01", "type": "income", "description": "Seduta", "amount": 100 }
+              ],
+              "goals": [],
+              "settings": {}
+            }
+            "#,
+        )
+        .expect("v2 movement backup should be normalized");
+
+        assert_eq!(payload.meta.version, 4);
+        assert_eq!(payload.movements.len(), 1);
+        assert_eq!(payload.movements[0].category, "Altro");
+        assert_eq!(payload.categories.len(), default_categories().len());
+        assert!(payload.deadlines.is_empty());
+        assert_eq!(payload.preferences.id.as_deref(), Some("default"));
+        assert_eq!(payload.preferences.safety_threshold_amount, None);
+    }
+
+    #[test]
+    fn parse_backup_payload_rejects_payload_without_movements() {
+        let error = parse_backup_payload(r#"{ "goals": [] }"#).expect_err("empty backup should fail");
+
+        assert_eq!(error, "Il file non contiene movimenti importabili.");
+    }
 }
 
 pub fn run() {
