@@ -27,9 +27,11 @@ const secondaryNavItems: Array<[ActiveView, string, AppIconComponent]> = [
 
 export function NavigationPane({
   activeView,
+  hasUpdateAvailable,
   onSelectView,
 }: {
   activeView: ActiveView
+  hasUpdateAvailable?: boolean
   onSelectView: (view: ActiveView) => void
 }) {
   return (
@@ -51,6 +53,7 @@ export function NavigationPane({
           >
             <AppIcon icon={Icon} size={20} />
             <span>{label}</span>
+            {view === 'backup' && hasUpdateAvailable ? <span className="nav-update-dot" aria-label="Aggiornamento disponibile" /> : null}
           </button>
         ))}
       </nav>

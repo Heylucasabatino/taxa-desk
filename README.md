@@ -109,6 +109,7 @@ Dettagli tecnici: [docs/updates.md](docs/updates.md)
 ## Documentazione
 
 - [Installazione](docs/installation.md)
+- [Stato progetto](docs/status.md)
 - [Aggiornamenti e release](docs/updates.md)
 - [Checklist release](docs/release-checklist.md)
 - [Roadmap portable](docs/portable-roadmap.md)

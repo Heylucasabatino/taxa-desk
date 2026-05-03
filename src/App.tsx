@@ -3,6 +3,7 @@ import { FluentProvider, webDarkTheme, webLightTheme, type Theme } from '@fluent
 import './App.css'
 import { AppContent } from './components/AppContent'
 import { AppFrame } from './components/AppFrame'
+import { FloatingAssist } from './components/FloatingAssist'
 import { ImportPreviewDialog, type PendingImport } from './components/ImportPreviewDialog'
 import { type MovementFormState } from './components/MovementDrawer'
 import { useAppData } from './hooks/useAppData'
@@ -561,6 +562,7 @@ function App() {
     <AppFrame activeView={activeView} selectedYear={selectedYear} availableYears={availableYears}
       movements={annualMovements} diagnostics={diagnostics}
       toast={toast} backupInputRef={backupInputRef} onSelectView={selectView}
+      hasUpdateAvailable={updateState.phase === 'available'}
       onSetYear={(year) => setSelectedYear(clampYear(year))} onNewMovement={openNewMovement} onExport={handleExport} onImportFile={handleImport}
       modals={
         pendingImport ? (
@@ -575,6 +577,12 @@ function App() {
         ) : null
       }>
       <AppContent {...contentProps} />
+      <FloatingAssist
+        updateState={updateState}
+        onInstallUpdate={handleInstallUpdate}
+        onOpenFeedbackPage={handleOpenFeedbackPage}
+        onShowUpdates={() => selectView('backup')}
+      />
     </AppFrame>
     </FluentProvider>
   )

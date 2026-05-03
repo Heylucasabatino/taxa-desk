@@ -14,6 +14,7 @@ export function AppShell({
   selectedYear,
   movements,
   diagnostics,
+  hasUpdateAvailable,
   toast,
   backupInputRef,
   children,
@@ -29,6 +30,7 @@ export function AppShell({
   availableYears: number[]
   movements: Movement[]
   diagnostics: PortableDiagnostics | null
+  hasUpdateAvailable?: boolean
   toast: Toast | null
   backupInputRef: RefObject<HTMLInputElement | null>
   children: ReactNode
@@ -46,7 +48,7 @@ export function AppShell({
   return (
     <main className="ledger-app">
       <AppTitleBar />
-      <NavigationPane activeView={activeView} onSelectView={onSelectView} />
+      <NavigationPane activeView={activeView} hasUpdateAvailable={hasUpdateAvailable} onSelectView={onSelectView} />
       <section className="workspace">
         <PageHeader
           activeView={activeView}

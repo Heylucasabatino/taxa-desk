@@ -1355,7 +1355,7 @@ textarea:focus {
 .toast {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: 96px;
   z-index: 20;
   max-width: min(420px, calc(100vw - 48px));
   display: flex;
@@ -1366,6 +1366,77 @@ textarea:focus {
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 12px 16px;
+}
+
+.floating-assist {
+  position: fixed;
+  right: 24px;
+  bottom: 42px;
+  z-index: 18;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  max-width: min(520px, calc(100vw - 48px));
+  pointer-events: none;
+}
+
+.floating-assist > * {
+  pointer-events: auto;
+}
+
+.floating-feedback-button {
+  min-width: 112px;
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-soft);
+}
+
+.floating-update {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 8px;
+}
+
+.floating-update-info {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 0 6px;
+}
+
+.floating-update-info span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.floating-update-info strong,
+.floating-update-info small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floating-update-info strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.floating-update-info small {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .toast button {
@@ -1983,6 +2054,16 @@ textarea:focus {
   height: 20px;
   border-radius: 999px;
   background: var(--accent);
+}
+
+.nav-update-dot {
+  position: absolute;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .workspace {
@@ -3230,5 +3311,25 @@ textarea {
   .update-definition-list,
   .local-statusbar {
     grid-template-columns: 1fr;
+  }
+
+  .floating-assist {
+    right: 12px;
+    bottom: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .floating-update {
+    max-width: 100%;
+  }
+
+  .floating-update-info small {
+    display: none;
+  }
+
+  .toast {
+    right: 12px;
+    bottom: 74px;
+    max-width: calc(100vw - 24px);
   }
 }
