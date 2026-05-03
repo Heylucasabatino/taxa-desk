@@ -7,7 +7,7 @@ Aggiornato al 2026-05-03.
 Taxa Desk è una beta desktop Windows privacy-first per gestione locale di entrate, spese, accantonamenti, scadenze, obiettivi e backup JSON.
 
 - Versione codice: `0.1.10`.
-- Ultima release pubblica GitHub: `0.1.9`.
+- Ultima release pubblica GitHub: `0.1.10`.
 - Canale download consigliato in beta: portable ZIP.
 - Canale installer: disponibile come alternativa, non principale.
 - Database locale: SQLite nella cartella applicazione o nella cartella dati locale del bundle installer.
@@ -36,7 +36,9 @@ Il controllo aggiornamenti resta manuale. L’app non esegue auto-update silenzi
 
 Il canale portable è quello consigliato per la beta: l’app scarica un manifest statico da GitHub Releases, verifica SHA256 e firma minisign del pacchetto update, crea un backup JSON locale, chiude Taxa Desk, sostituisce solo i file applicativi e riapre l’app.
 
-La release `0.1.10` non è ancora pubblicata perché per creare artifact updater validi serve una build firmata con:
+La release `0.1.10` è pubblicata su GitHub Releases con artifact firmati per installer e portable updater.
+
+Per creare nuove release servono sempre:
 
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY
@@ -59,13 +61,13 @@ Artifact locali rigenerabili non devono essere committati:
 ## Rischi residui
 
 - Windows SmartScreen continuerà a mostrare attrito finché l’app non avrà firma Authenticode.
-- Prima di pubblicare `0.1.10` va rifatta una release firmata e testata da `0.1.9` a `0.1.10`.
+- Dopo ogni release va testato almeno un aggiornamento reale dalla versione pubblica precedente alla nuova.
 - Il form feedback pubblico deve essere configurato con `VITE_FEEDBACK_URL` nelle build pubbliche.
 - Le stime fiscali restano orientative e devono essere presentate come supporto operativo, non consulenza fiscale.
 
 ## Prossime priorità
 
-1. Generare e pubblicare una release firmata `0.1.10`.
-2. Testare update reale da `0.1.9` a `0.1.10` su una cartella portable con dati fittizi.
-3. Configurare un form feedback pubblico stabile.
-4. Valutare firma Authenticode prima di spingere la beta verso utenti non tecnici.
+1. Testare update reale da `0.1.9` a `0.1.10` su una cartella portable con dati fittizi.
+2. Configurare un form feedback pubblico stabile.
+3. Valutare firma Authenticode prima di spingere la beta verso utenti non tecnici.
+4. Preparare una checklist rapida per ogni futura release patch.
