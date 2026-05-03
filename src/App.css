@@ -1451,6 +1451,10 @@ textarea:focus {
   text-underline-offset: 3px;
 }
 
+.toast-with-floating-update {
+  bottom: 168px;
+}
+
 @media (max-width: 1180px) {
   .ledger-app {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -3331,5 +3335,9 @@ textarea {
     right: 12px;
     bottom: 74px;
     max-width: calc(100vw - 24px);
+  }
+
+  .toast-with-floating-update {
+    bottom: 118px;
   }
 }

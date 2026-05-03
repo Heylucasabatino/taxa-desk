@@ -74,7 +74,7 @@ export function AppShell({
         <LocalStatusBar diagnostics={diagnostics} movementCount={movements.length} />
       </section>
       {toast ? (
-        <div className="toast" role="status" aria-live="polite">
+        <div className={hasUpdateAvailable ? 'toast toast-with-floating-update' : 'toast'} role="status" aria-live="polite">
           <span>{toast.message}</span>
           {toast.onAction && toast.actionLabel ? (
             <button type="button" onClick={toast.onAction}>{toast.actionLabel}</button>
